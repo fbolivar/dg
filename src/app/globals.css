@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* DG&A Brand */
+    --brand-navy: 215 47% 19%;
+    --brand-navy-light: 215 42% 26%;
+    --brand-gold: 41 63% 45%;
+    --brand-gold-light: 41 63% 55%;
+
+    /* shadcn tokens */
+    --background: 216 24% 96%;
+    --foreground: 215 47% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 47% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 47% 12%;
+    --primary: 215 47% 19%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 20% 93%;
+    --secondary-foreground: 215 47% 19%;
+    --muted: 214 20% 93%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 41 63% 45%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 215 47% 19%;
+    --radius: 0.625rem;
+
+    /* Chart colors */
+    --chart-1: 215 47% 19%;
+    --chart-2: 41 63% 45%;
+    --chart-3: 217 91% 60%;
+    --chart-4: 142 71% 45%;
+    --chart-5: 0 72% 51%;
+  }
+}
+
+@layer base {
+  * { @apply border-border box-border; }
+  body { @apply bg-background text-foreground font-inter antialiased; }
+}
+
+/* Sidebar active glow */
+.nav-active {
+  background: rgba(184, 150, 46, 0.15);
+  border-right: 3px solid #B8962E;
+}
+
+/* Card hover */
+.card-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-hover:hover {
+  box-shadow: 0 8px 25px rgba(26, 43, 74, 0.12);
+  transform: translateY(-1px);
+}
+
+/* KPI card trend up/down */
+.trend-up { color: #16a34a; }
+.trend-down { color: #dc2626; }
+.trend-neutral { color: #64748b; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+/* Recharts override */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: hsl(var(--border));
+  stroke-dasharray: 3 3;
+}
+.recharts-tooltip-wrapper { outline: none !important; }
