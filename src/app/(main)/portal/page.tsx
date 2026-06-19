@@ -10,14 +10,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SeverityBadge } from '@/components/shared/severity-badge'
-import { ALERTS, MATTERS, DOCUMENTS, CLIENTS } from '@/shared/data/mock'
+import { useData } from '@/shared/context/data-context'
 
 // For demo: client is Andina Retail (cl1)
 const CLIENT_ID = 'cl1'
-const client = CLIENTS.find(c => c.id === CLIENT_ID)!
-const myAlerts = ALERTS.filter(a => a.clients_affected?.includes(CLIENT_ID)).slice(0, 4)
-const myMatters = MATTERS.filter(m => m.client_id === CLIENT_ID)
-const myDocuments = DOCUMENTS.filter(d => d.client_id === CLIENT_ID)
 
 type ConceptRequest = {
   id: string
@@ -46,6 +42,12 @@ const STATUS_LABELS: Record<string, string> = { recibida: 'Recibida', en_proceso
 const URGENCY_OPTS = ['Normal (2-3 días hábiles)', 'Urgente (24 horas)', 'Muy urgente (mismo día)']
 
 export default function PortalPage() {
+  const { clients, alerts, matters, documents } = useData()
+  const client = clients.find(c => c.id === CLIENT_ID)
+  const myAlerts = alerts.filter(a => a.clients_affected?.includes(CLIENT_ID)).slice(0, 4)
+  const myMatters = matters.filter(m => m.client_id === CLIENT_ID)
+  const myDocuments = documents.filter(d => d.client_id === CLIENT_ID)
+
   const [requesting, setRequesting] = useState(false)
   const [requests, setRequests] = useState<ConceptRequest[]>([
     { id: 'rq1', topic: 'Revisión cláusula de no competencia', description: 'Necesitamos revisar la cláusula de no competencia de un contrato antes de firmar.', urgency: 'Normal (2-3 días hábiles)', status: 'respondida', created_at: '2026-05-10T09:00:00Z' },
@@ -70,11 +72,11 @@ export default function PortalPage() {
     setRequests(prev => [req, ...prev])
     setRequesting(false)
     setForm({ topic: '', description: '', urgency: '' })
-    showToast('Solicitud enviada. Tiempo estimado de respuesta: ' + form.urgency.split('(')[1]?.replace(')', '') ?? '2-3 días hábiles')
+    showToast('Solicitud enviada. Tiempo estimado de respuesta: ' + ((form.urgency.split('(')[1] || '').replace(')', '') || '2-3 días hábiles'))
   }
 
   function downloadDoc(doc: typeof myDocuments[0]) {
-    const content = `DOCUMENTO: ${doc.name}\nEstado: ${doc.status}\nCliente: ${client.name}\nFecha: ${new Date().toLocaleDateString('es-CO')}\n\n[Contenido del documento descargado desde el Portal DG&A]`
+    const content = `DOCUMENTO: ${doc.name}\nEstado: ${doc.status}\nCliente: ${client?.name ?? 'DG&A'}\nFecha: ${new Date().toLocaleDateString('es-CO')}\n\n[Contenido del documento descargado desde el Portal DG&A]`
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = `${doc.name.replace(/\s+/g, '-').toLowerCase()}.txt`; a.click()
@@ -86,9 +88,9 @@ export default function PortalPage() {
       {/* Welcome */}
       <div className="bg-brand-navy rounded-lg p-6 text-white">
         <p className="text-sm text-white/60 font-medium mb-1">Portal de cliente</p>
-        <h1 className="text-2xl font-semibold font-playfair">{client.name}</h1>
+        <h1 className="text-2xl font-semibold font-playfair">{client?.name ?? 'Portal DG&A'}</h1>
         <p className="text-white/70 text-sm mt-1">
-          NIT: {client.nit} · Sector: {client.sector} · Socio asignado: Carlos Gómez Vargas
+          {client ? `NIT: ${client.nit} · Sector: ${client.sector} · ` : ''}Socio asignado: Carlos Gómez Vargas
         </p>
         <div className="flex gap-3 mt-4">
           <div className="bg-white/10 rounded-md px-3 py-2 text-center min-w-[80px]">

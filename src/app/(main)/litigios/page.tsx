@@ -158,7 +158,7 @@ export default function LitigiosPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Asuntos activos', value: stats.activos, color: 'text-foreground', sub: 'En trámite' },
           { label: 'Litigios', value: stats.litigios, color: 'text-brand-navy', sub: 'Procesos judiciales' },

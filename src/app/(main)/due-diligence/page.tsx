@@ -162,7 +162,7 @@ export default function DueDiligencePage() {
         <Button size="sm" onClick={openCreateProj}><Plus className="w-3.5 h-3.5 mr-1.5" />Nuevo proyecto</Button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Proyectos activos', value: projects.filter(p => p.status === 'activo').length, color: 'text-foreground', sub: 'En progreso' },
           { label: 'Total hallazgos', value: findings.length, color: 'text-brand-navy', sub: 'Registrados' },
@@ -256,7 +256,7 @@ export default function DueDiligencePage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {[
                   { label: 'Total hallazgos', value: projectFindings.length, color: '' },
                   { label: 'Críticos', value: projectFindings.filter(f => f.severity === 'crítico').length, color: 'text-red-600' },

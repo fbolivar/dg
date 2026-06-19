@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRoleStore } from '@/shared/stores/role-store'
+import { useUIStore } from '@/shared/stores/ui-store'
 import type { UserRole } from '@/shared/types'
 
 const NAV_ITEMS = [
@@ -39,10 +40,24 @@ const SECTION_DIVIDERS: Record<string, string> = {
 export function Sidebar() {
   const pathname = usePathname()
   const { currentRole } = useRoleStore()
+  const { mobileNavOpen, setMobileNav } = useUIStore()
   const visibleItems = NAV_ITEMS.filter(item => item.roles.includes(currentRole))
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-[220px] flex flex-col z-40 bg-brand-navy">
+    <>
+    {/* Backdrop (solo móvil/tablet cuando el cajón está abierto) */}
+    <div
+      onClick={() => setMobileNav(false)}
+      className={cn(
+        "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity lg:hidden",
+        mobileNavOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+      )}
+      aria-hidden="true"
+    />
+    <aside className={cn(
+      "fixed left-0 top-0 h-full w-[220px] flex flex-col z-50 bg-brand-navy transition-transform duration-300 ease-in-out lg:translate-x-0",
+      mobileNavOpen ? "translate-x-0" : "-translate-x-full"
+    )}>
 
       {/* Logo */}
       <div className="flex items-center px-5 pt-6 pb-5">
@@ -81,6 +96,7 @@ export function Sidebar() {
               )}
               <Link
                 href={item.href}
+                onClick={() => setMobileNav(false)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all duration-150 group relative",
                   isActive
@@ -120,5 +136,6 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   )
 }

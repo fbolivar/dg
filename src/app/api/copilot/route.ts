@@ -5,8 +5,35 @@ interface Message {
   content: string
 }
 
+// Límites de validación: previenen payloads abusivos / inyección de contexto.
+const MAX_MESSAGES = 30
+const MAX_CONTENT_CHARS = 8000
+
+function validateMessages(input: unknown): Message[] | null {
+  if (!Array.isArray(input) || input.length === 0 || input.length > MAX_MESSAGES) return null
+  const clean: Message[] = []
+  for (const m of input) {
+    if (typeof m !== 'object' || m === null) return null
+    const { role, content } = m as Record<string, unknown>
+    if (role !== 'user' && role !== 'assistant') return null
+    if (typeof content !== 'string' || content.length === 0 || content.length > MAX_CONTENT_CHARS) return null
+    clean.push({ role, content })
+  }
+  return clean
+}
+
 export async function POST(req: NextRequest) {
-  const { messages } = await req.json() as { messages: Message[] }
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 })
+  }
+
+  const messages = validateMessages((body as { messages?: unknown })?.messages)
+  if (!messages) {
+    return NextResponse.json({ error: 'Formato de mensajes inválido' }, { status: 400 })
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -21,7 +48,7 @@ export async function POST(req: NextRequest) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       system: `Eres el Copiloto Legal interno de DG&A Abogados, una firma boutique colombiana especializada en derecho corporativo, laboral, compliance, M&A y contratación pública.
 

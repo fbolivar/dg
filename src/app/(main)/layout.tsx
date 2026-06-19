@@ -8,10 +8,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <DataProvider>
       <div className="min-h-screen bg-background">
         <Sidebar />
-        <div className="ml-[220px] flex flex-col min-h-screen">
+        <div className="lg:ml-[220px] flex flex-col min-h-screen">
           <Header />
           <main className="flex-1 pt-14 flex flex-col">
-            <div className="flex-1 p-6">
+            <div className="flex-1 p-4 sm:p-6">
               {children}
             </div>
             <FooterNotice />

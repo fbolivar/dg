@@ -74,3 +74,6 @@ supabase/.temp
 !.claude/design-systems/**/*.png
 !.claude/design-systems/**/*.webp
 .claude/skills/video-visuals/assets/
+
+# TS build info
+tsconfig.tsbuildinfo

@@ -95,7 +95,7 @@ export default function ReportesPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Alertas normativas', value: alerts.length, icon: Bell, trend: '+20% vs. mes ant.', up: false },
           { label: 'Asuntos activos', value: matters.filter(m => m.status === 'activo').length, icon: Scale, trend: 'Sin cambio', up: null },

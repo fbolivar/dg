@@ -176,7 +176,7 @@ export default function CompliancePage() {
 
       <AiDisclaimer message="Los diagnósticos son orientativos. Requieren validación del equipo legal de DG&A antes de ser utilizados." variant="banner" />
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total diagnósticos', value: stats.total, color: 'text-foreground', sub: 'Registrados' },
           { label: 'Completados', value: stats.completado, color: 'text-green-600', sub: '100% de avance' },

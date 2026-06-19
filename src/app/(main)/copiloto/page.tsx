@@ -1,12 +1,16 @@
 "use client"
 import { useState, useRef, useEffect } from 'react'
-import { Send, Loader2, BookOpen, FileText, MessageSquare, AlertTriangle, Star, Copy, CheckSquare } from 'lucide-react'
+import { Send, Loader2, BookOpen, FileText, MessageSquare, AlertTriangle, Star, Copy, CheckSquare, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+import * as db from '@/shared/services/db'
+import { useData } from '@/shared/context/data-context'
 import type { CopilotMessage } from '@/shared/types'
+
+type NoteState = { draftId?: string; status?: 'borrador_ia' | 'en_revisión'; saving?: boolean }
 
 const SUGGESTED_QUESTIONS = [
   '¿Cuáles son las causales de terminación con justa causa bajo el CST?',
@@ -41,15 +45,65 @@ function ConfidenceBadge({ level }: { level?: string }) {
 }
 
 export default function CopilotoPage() {
+  const { refresh } = useData()
   const [messages, setMessages] = useState<CopilotMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [activeSources, setActiveSources] = useState<string[]>([])
+  const [noteState, setNoteState] = useState<Record<number, NoteState>>({})
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  async function crearBorrador(idx: number, msg: CopilotMessage) {
+    if (noteState[idx]?.draftId || noteState[idx]?.saving) return
+    setNoteState(prev => ({ ...prev, [idx]: { ...prev[idx], saving: true } }))
+    const firstLine = msg.content.split('\n').find(l => l.trim()) ?? 'Consulta jurídica'
+    const note = await db.createLegalNote({
+      title: `Borrador IA — ${firstLine.replace(/[*#>]/g, '').trim().slice(0, 70)}`,
+      practice_area_id: 'pa1',
+      audience: 'área_legal',
+      tone: 'técnico',
+      content_draft: msg.content,
+      status: 'borrador_ia',
+      author_id: 'u1',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    if (note) {
+      setNoteState(prev => ({ ...prev, [idx]: { draftId: note.id, status: 'borrador_ia' } }))
+      await refresh('legal_notes')
+    } else {
+      setNoteState(prev => ({ ...prev, [idx]: { ...prev[idx], saving: false } }))
+    }
+  }
+
+  async function enviarRevision(idx: number) {
+    const st = noteState[idx]
+    if (!st?.draftId || st.status === 'en_revisión' || st.saving) return
+    setNoteState(prev => ({ ...prev, [idx]: { ...prev[idx], saving: true } }))
+    await db.updateLegalNote(st.draftId, { status: 'en_revisión', reviewer_id: 'u1' })
+    setNoteState(prev => ({ ...prev, [idx]: { draftId: st.draftId, status: 'en_revisión' } }))
+    await refresh('legal_notes')
+  }
+
+  async function copiar(idx: number, content: string) {
+    try {
+      await navigator.clipboard.writeText(content)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = content
+      document.body.appendChild(ta)
+      ta.select()
+      try { document.execCommand('copy') } catch { /* noop */ }
+      document.body.removeChild(ta)
+    }
+    setCopiedIdx(idx)
+    setTimeout(() => setCopiedIdx(prev => (prev === idx ? null : prev)), 1800)
+  }
 
   async function sendMessage() {
     if (!input.trim() || loading) return
@@ -92,7 +146,7 @@ export default function CopilotoPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] gap-4 max-w-[1300px]">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-7rem)] lg:h-[calc(100vh-8rem)] gap-4 max-w-[1300px]">
       {/* Main Chat */}
       <div className="flex-1 flex flex-col bg-white rounded-lg border border-border overflow-hidden">
         {/* Chat Header */}
@@ -121,7 +175,7 @@ export default function CopilotoPage() {
                   Consulte al Copiloto DG&A sobre temas de derecho colombiano.<br />
                   <span className="text-xs">Respuestas basadas en legislación, jurisprudencia y doctrina nacional.</span>
                 </p>
-                <div className="grid grid-cols-2 gap-2 max-w-xl mx-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl mx-auto">
                   {SUGGESTED_QUESTIONS.map((q, i) => (
                     <button
                       key={i}
@@ -167,19 +221,46 @@ export default function CopilotoPage() {
                     </div>
                   )}
                   {msg.role === 'assistant' && (
-                    <div className="flex items-center gap-1.5 mt-2">
-                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2">
-                        <FileText className="w-2.5 h-2.5 mr-1" />
-                        Crear borrador
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2">
-                        <CheckSquare className="w-2.5 h-2.5 mr-1" />
-                        Enviar a revisión
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2">
-                        <Copy className="w-2.5 h-2.5 mr-1" />
-                        Copiar
-                      </Button>
+                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                      {(() => {
+                        const st = noteState[i]
+                        const hasDraft = !!st?.draftId
+                        const inReview = st?.status === 'en_revisión'
+                        return (
+                          <>
+                            <Button
+                              size="sm" variant="outline"
+                              onClick={() => crearBorrador(i, msg)}
+                              disabled={hasDraft || st?.saving}
+                              className={cn('h-6 text-[10px] px-2', hasDraft && 'border-green-300 bg-green-50 text-green-700')}
+                            >
+                              {st?.saving && !hasDraft ? <Loader2 className="w-2.5 h-2.5 mr-1 animate-spin" />
+                                : hasDraft ? <Check className="w-2.5 h-2.5 mr-1" />
+                                : <FileText className="w-2.5 h-2.5 mr-1" />}
+                              {hasDraft ? 'Borrador creado' : 'Crear borrador'}
+                            </Button>
+                            <Button
+                              size="sm" variant="outline"
+                              onClick={() => enviarRevision(i)}
+                              disabled={!hasDraft || inReview || st?.saving}
+                              className={cn('h-6 text-[10px] px-2', inReview && 'border-amber-300 bg-amber-50 text-amber-700')}
+                            >
+                              {st?.saving && hasDraft && !inReview ? <Loader2 className="w-2.5 h-2.5 mr-1 animate-spin" />
+                                : inReview ? <Check className="w-2.5 h-2.5 mr-1" />
+                                : <CheckSquare className="w-2.5 h-2.5 mr-1" />}
+                              {inReview ? 'En revisión' : 'Enviar a revisión'}
+                            </Button>
+                            <Button
+                              size="sm" variant="outline"
+                              onClick={() => copiar(i, msg.content)}
+                              className={cn('h-6 text-[10px] px-2', copiedIdx === i && 'border-green-300 bg-green-50 text-green-700')}
+                            >
+                              {copiedIdx === i ? <Check className="w-2.5 h-2.5 mr-1" /> : <Copy className="w-2.5 h-2.5 mr-1" />}
+                              {copiedIdx === i ? 'Copiado' : 'Copiar'}
+                            </Button>
+                          </>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
@@ -220,7 +301,7 @@ export default function CopilotoPage() {
       </div>
 
       {/* Sources Panel */}
-      <div className="w-60 flex flex-col gap-3">
+      <div className="hidden lg:flex w-60 flex-col gap-3">
         <div className="bg-white rounded-lg border border-border flex-1 flex flex-col overflow-hidden">
           <div className="px-3 py-2.5 border-b border-border">
             <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">

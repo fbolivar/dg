@@ -145,7 +145,7 @@ export default function MonitorPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total alertas', value: stats.total, color: 'text-foreground', sub: 'Registradas' },
           { label: 'Críticas', value: stats.critico, color: 'text-red-600', sub: 'Acción inmediata' },

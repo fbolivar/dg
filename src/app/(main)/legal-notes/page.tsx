@@ -148,7 +148,7 @@ export default function LegalNotesPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total', value: counts.total },
           { label: 'Borrador IA', value: counts.borrador },
@@ -263,7 +263,7 @@ export default function LegalNotesPage() {
                 </TabsList>
                 {(['draft', 'email', 'linkedin', 'summary'] as const).map(tab => {
                   const field = tab === 'draft' ? 'content_draft' : tab === 'email' ? 'content_email' : tab === 'linkedin' ? 'content_linkedin' : 'content_summary'
-                  const value = editMode ? (editDraft as Record<string, string>)[field] : ((selected as Record<string, unknown>)[field] as string) ?? 'Sin contenido.'
+                  const value = editMode ? (editDraft as Record<string, string>)[field] : ((selected as unknown as Record<string, unknown>)[field] as string) ?? 'Sin contenido.'
                   return (
                     <TabsContent key={tab} value={tab}>
                       <Textarea

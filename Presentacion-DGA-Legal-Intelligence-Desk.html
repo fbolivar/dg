@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DG&A · Legal Intelligence Desk — Presentación</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --navy: #1A2B4A;
+    --navy-light: #243860;
+    --navy-dark: #111d32;
+    --gold: #B8962E;
+    --gold-light: #D4AF50;
+    --ink: #0d1626;
+    --muted: rgba(255,255,255,0.52);
+    --muted-strong: rgba(255,255,255,0.74);
+    --line: rgba(255,255,255,0.09);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #06090f;
+    color: #fff;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .playfair { font-family: 'Playfair Display', serif; }
+
+  .deck { width: 100vw; height: 100vh; position: relative; }
+  .slide {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    padding: 7vh 9vw;
+    background: linear-gradient(165deg, var(--navy) 0%, var(--navy-dark) 100%);
+    opacity: 0;
+  }
+  .slide.active { display: flex; opacity: 1; animation: fade .5s ease; }
+  @keyframes fade { from { opacity:0; transform: translateY(10px);} to {opacity:1; transform: translateY(0);} }
+
+  .slide::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--gold) 0%, rgba(184,150,46,0) 55%);
+    pointer-events: none;
+  }
+  .slide > * { position: relative; z-index: 2; }
+
+  .kicker {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-size: .7rem; font-weight: 600; letter-spacing: .24em; text-transform: uppercase;
+    color: var(--gold-light); margin-bottom: 28px;
+  }
+  .kicker::before { content:""; width: 26px; height: 1px; background: var(--gold); display:inline-block; }
+
+  h1.title { font-size: clamp(2.3rem, 5vw, 4.2rem); font-weight: 600; line-height: 1.08; letter-spacing: -0.01em; }
+  h2.head { font-size: clamp(1.8rem, 3.6vw, 2.9rem); font-weight: 600; line-height: 1.12; letter-spacing: -0.01em; margin-bottom: 8px; }
+  .accent { color: var(--gold-light); }
+  .lead { font-size: clamp(1rem, 1.5vw, 1.28rem); color: var(--muted-strong); font-weight: 300; line-height: 1.6; max-width: 62ch; }
+  .small { font-size: .9rem; color: var(--muted); font-weight: 300; }
+
+  .grid { display: grid; gap: 18px; margin-top: 42px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+
+  .card {
+    background: rgba(255,255,255,0.035);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 26px 24px;
+    transition: border-color .3s ease, background .3s ease;
+  }
+  .card:hover { border-color: rgba(184,150,46,0.4); background: rgba(255,255,255,0.05); }
+  .card .idx {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem; color: var(--gold-light); font-weight: 600;
+    display:block; margin-bottom: 14px; letter-spacing: .04em;
+  }
+  .card .idx::after { content:""; display:block; width: 26px; height: 1px; background: var(--gold); margin-top: 12px; opacity:.6; }
+  .card h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 8px; }
+  .card p { font-size: .9rem; color: var(--muted); line-height: 1.55; font-weight: 300; }
+
+  .pill {
+    display:inline-flex; align-items:center; gap:8px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--line);
+    color: var(--gold-light); font-size:.74rem; font-weight:500; letter-spacing:.04em;
+    padding: 7px 16px; border-radius: 4px;
+  }
+
+  .list { margin-top: 36px; display:flex; flex-direction: column; gap: 22px; max-width: 74ch; }
+  .row { display:flex; gap: 20px; align-items:flex-start; }
+  .row .num { flex-shrink:0; font-family:'Playfair Display', serif; font-size: 1.05rem; color: var(--gold-light); font-weight:600; width: 30px; padding-top: 2px; }
+  .row .txt b { font-size: 1.05rem; font-weight: 600; }
+  .row .txt p { color: var(--muted); font-size: .95rem; margin-top: 5px; line-height: 1.55; font-weight: 300; }
+  .row .txt span { color: var(--muted); font-weight: 300; }
+
+  .stats { display:flex; gap: 64px; margin-top: 46px; flex-wrap: wrap; }
+  .stat .n { font-family:'Playfair Display', serif; font-size: clamp(1.9rem, 3.4vw, 2.8rem); font-weight: 600; color: var(--gold-light); line-height:1.1; letter-spacing:-0.01em; }
+  .stat .l { font-size: .9rem; color: var(--muted); margin-top: 12px; max-width: 24ch; font-weight: 300; line-height: 1.5; }
+
+  .flow { display:flex; align-items:stretch; gap: 0; margin-top: 48px; }
+  .flow .step { flex:1; padding: 26px 22px; border:1px solid var(--line); background: rgba(255,255,255,0.03); }
+  .flow .step:first-child { border-radius: 10px 0 0 10px; }
+  .flow .step:last-child { border-radius: 0 10px 10px 0; }
+  .flow .step .num { font-size:.7rem; font-weight:600; letter-spacing:.18em; color: var(--gold); }
+  .flow .step h4 { font-size:1.02rem; margin: 12px 0 7px; font-weight:600; }
+  .flow .step p { font-size:.85rem; color: var(--muted); line-height:1.5; font-weight: 300; }
+  .flow .arrow { display:flex; align-items:center; color: var(--gold); font-size:1.1rem; padding: 0 10px; }
+
+  .cover-logo { height: 84px; margin-bottom: 48px; }
+  .cover-meta { margin-top: 56px; display:flex; gap: 36px; align-items:center; color: var(--muted); font-size:.9rem; font-weight: 300; }
+  .cover-meta b { color: #fff; font-weight:500; }
+
+  .center { align-items: center; text-align: center; }
+  .center .lead { margin-left:auto; margin-right:auto; }
+  .quote { font-size: clamp(1.5rem, 3vw, 2.5rem); font-weight: 500; line-height: 1.3; max-width: 26ch; }
+
+  .chrome { position: fixed; bottom: 22px; left: 0; right: 0; z-index: 50;
+    display:flex; align-items:center; justify-content: space-between; padding: 0 36px; pointer-events:none; }
+  .brandmark { font-size:.68rem; letter-spacing:.2em; text-transform:uppercase; color: rgba(255,255,255,.38); font-weight:500; }
+  .brandmark b { color: var(--gold-light); font-weight:600; }
+  .nav { display:flex; align-items:center; gap: 14px; pointer-events:auto; }
+  .nav button {
+    width: 38px; height: 38px; border-radius: 4px;
+    border: 1px solid var(--line); background: rgba(255,255,255,0.04);
+    color:#fff; cursor:pointer; font-size: 1rem; transition: all .2s;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .nav button:hover { background: var(--gold); border-color: var(--gold); color: var(--navy-dark); }
+  .counter { font-size:.78rem; color: rgba(255,255,255,.48); min-width: 52px; text-align:center; font-variant-numeric: tabular-nums; font-weight: 300; }
+
+  .progress { position: fixed; top: 0; left: 0; height: 2px; background: var(--gold); z-index: 60; transition: width .4s ease; }
+  .hint { position: fixed; top: 16px; right: 22px; z-index: 50; font-size:.7rem; color: rgba(255,255,255,.28); font-weight: 300; }
+
+  @media (max-width: 820px) {
+    .g3,.g4 { grid-template-columns: repeat(2,1fr); }
+    .flow { flex-direction: column; }
+    .flow .step { border-radius: 8px !important; }
+    .flow .arrow { transform: rotate(90deg); padding: 6px 0; }
+    .stats { gap: 30px; }
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="hint">&larr; &rarr;  navegar &middot; F pantalla completa</div>
+<div class="deck" id="deck">
+
+  <!-- 1 · PORTADA -->
+  <section class="slide active">
+    <img class="cover-logo js-logo" alt="DG&A" />
+    <div class="pill">Propuesta estratégica · Documento confidencial</div>
+    <h1 class="title playfair" style="margin-top:28px;">Legal Intelligence Desk</h1>
+    <p class="lead" style="margin-top:24px;">Una plataforma de inteligencia legal asistida por IA, construida sobre el criterio y los estándares de DG&amp;A Abogados.</p>
+    <div class="cover-meta">
+      <div>Presentado a <b>DG&amp;A Abogados</b></div>
+      <div style="width:1px;height:24px;background:var(--line);"></div>
+      <div>Sustentación de proyecto · <b>2026</b></div>
+    </div>
+  </section>
+
+  <!-- 2 · EL CONTEXTO -->
+  <section class="slide">
+    <div class="kicker">El contexto</div>
+    <h2 class="head">La práctica legal está entrando<br>en una nueva etapa.</h2>
+    <p class="lead" style="margin-top:18px;">La inteligencia artificial ya está cambiando la forma en que las firmas investigan, redactan y asesoran. En este escenario, las firmas tienden a tomar uno de dos caminos.</p>
+    <div class="grid g2" style="margin-top:44px;">
+      <div class="card">
+        <span class="idx">A</span>
+        <h3>El camino reactivo</h3>
+        <p>Adoptar herramientas genéricas de forma tardía y sin contexto propio, compitiendo principalmente por precio.</p>
+      </div>
+      <div class="card" style="border-color:rgba(184,150,46,0.4);background:rgba(184,150,46,0.05);">
+        <span class="idx">B</span>
+        <h3>El camino deliberado</h3>
+        <p>Integrar la IA al criterio propio de la firma, de forma estructurada, para atender mejor y posicionarse como referente.</p>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:34px;color:#fff;">La decisión relevante no es si adoptar IA, sino <span class="accent">cómo hacerlo con criterio</span> y antes que el resto del mercado.</p>
+  </section>
+
+  <!-- 3 · EL PROBLEMA -->
+  <section class="slide">
+    <div class="kicker">El punto de partida</div>
+    <h2 class="head">Hoy, el conocimiento de la firma<br>está disperso y poco aprovechado.</h2>
+    <div class="list">
+      <div class="row"><div class="num">01</div><div class="txt"><b>Vigilancia normativa reactiva.</b><p>Los cambios regulatorios se identifican de forma manual y, a menudo, tarde. El cliente espera anticipación.</p></div></div>
+      <div class="row"><div class="num">02</div><div class="txt"><b>Tiempo profesional en tareas repetitivas.</b><p>Revisar contratos, redactar boletines y atender consultas frecuentes consume horas que podrían dedicarse a la estrategia.</p></div></div>
+      <div class="row"><div class="num">03</div><div class="txt"><b>El valor entregado es poco visible.</b><p>Sin un canal propio, gran parte del trabajo de la firma queda diluido entre correos y llamadas.</p></div></div>
+      <div class="row"><div class="num">04</div><div class="txt"><b>El criterio no se capitaliza.</b><p>El know-how acumulado de los socios no se convierte en un activo estructurado que escale con la firma.</p></div></div>
+    </div>
+  </section>
+
+  <!-- 4 · LA TESIS -->
+  <section class="slide center">
+    <div class="kicker" style="margin-left:auto;margin-right:auto;">La propuesta de valor</div>
+    <p class="quote playfair" style="margin:0 auto;">Convertir el criterio de DG&amp;A en una <span class="accent">plataforma de inteligencia legal</span> propia.</p>
+    <p class="lead" style="margin-top:34px;">No se trata de un software más, sino de una capacidad institucional: capturar el conocimiento de la firma, potenciarlo con IA y entregarlo como un servicio diferenciado.</p>
+  </section>
+
+  <!-- 5 · LA SOLUCIÓN -->
+  <section class="slide">
+    <div class="kicker">La solución</div>
+    <h2 class="head">Un solo entorno de trabajo<br>para toda la operación.</h2>
+    <p class="lead" style="margin-top:16px;">El <b>Legal Intelligence Desk</b> integra la vigilancia normativa, la asesoría asistida por IA y el portal del cliente en una sola plataforma, con la identidad y los estándares de DG&amp;A.</p>
+    <div class="flow">
+      <div class="step"><div class="num">01 · CAPTA</div><h4>Vigilancia normativa</h4><p>Monitorea cambios regulatorios y los clasifica por área de práctica e impacto.</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="num">02 · ANALIZA</div><h4>Criterio asistido por IA</h4><p>Genera análisis, borradores y diagnósticos con fuentes citadas, sujetos a revisión.</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="num">03 · ENTREGA</div><h4>Valor al cliente</h4><p>Boletines, alertas y un portal propio que hacen visible el trabajo de la firma.</p></div>
+    </div>
+  </section>
+
+  <!-- 6 · MÓDULOS internos -->
+  <section class="slide">
+    <div class="kicker">La plataforma · Operación interna</div>
+    <h2 class="head">Herramientas que potencian<br>el trabajo de cada abogado.</h2>
+    <div class="grid g3">
+      <div class="card"><span class="idx">01</span><h3>Copiloto DG&amp;A</h3><p>Asistente jurídico interno sobre derecho colombiano. Cita fuentes, indica su nivel de confianza y señala cuándo requiere el criterio de un socio.</p></div>
+      <div class="card"><span class="idx">02</span><h3>Monitor normativo</h3><p>Alertas de cambios regulatorios clasificadas por área e impacto. Vigilancia proactiva en lugar de reactiva.</p></div>
+      <div class="card"><span class="idx">03</span><h3>Legal Notes</h3><p>Genera borradores de boletines para clientes en distintas versiones —documento, correo, resumen ejecutivo— para revisión del socio.</p></div>
+      <div class="card"><span class="idx">04</span><h3>Revisión de contratos</h3><p>Identifica partes, obligaciones y fechas críticas; detecta riesgos por cláusula y omisiones, con recomendaciones.</p></div>
+      <div class="card"><span class="idx">05</span><h3>Due Diligence</h3><p>Proyectos de M&amp;A, inmobiliario y corporativo con hallazgos clasificados por severidad y resumen ejecutivo.</p></div>
+      <div class="card"><span class="idx">06</span><h3>Compliance</h3><p>Diagnósticos SAGRILAFT, PTEE y Habeas Data con matriz de riesgo y porcentaje de avance por cliente.</p></div>
+    </div>
+  </section>
+
+  <!-- 7 · MÓDULOS cliente -->
+  <section class="slide">
+    <div class="kicker">La plataforma · Relación con el cliente</div>
+    <h2 class="head">Un canal propio para hacer<br>visible el valor de la firma.</h2>
+    <p class="lead" style="margin-top:16px;">Un portal con la identidad de DG&amp;A, donde cada cliente accede a su información de forma ordenada.</p>
+    <div class="grid g3" style="margin-top:34px;">
+      <div class="card"><span class="idx">01</span><h3>Portal del cliente</h3><p>Acceso seguro y segmentado por rol. Un espacio propio, no un correo más en la bandeja.</p></div>
+      <div class="card"><span class="idx">02</span><h3>Asuntos y documentos</h3><p>Procesos, contratos y entregables organizados y disponibles de forma permanente.</p></div>
+      <div class="card"><span class="idx">03</span><h3>Alertas relevantes</h3><p>Notificaciones normativas pertinentes para su negocio, comunicadas de forma anticipada.</p></div>
+    </div>
+    <p class="lead" style="margin-top:32px;color:#fff;">El mismo equipo y el mismo criterio, presentados con la experiencia de una firma de primer nivel.</p>
+  </section>
+
+  <!-- 8 · DIFERENCIADOR -->
+  <section class="slide">
+    <div class="kicker">Por qué representa una ventaja</div>
+    <h2 class="head">Una ventaja construida sobre<br>el criterio propio de la firma.</h2>
+    <div class="grid g2" style="margin-top:38px;">
+      <div class="card"><span class="idx">01</span><h3>Posición de referente</h3><p>Adoptar de forma temprana una plataforma de inteligencia legal posiciona a DG&amp;A como firma a la vanguardia en el mercado colombiano.</p></div>
+      <div class="card"><span class="idx">02</span><h3>Basada en su propio criterio</h3><p>La IA responde según los lineamientos de la firma, no con criterios genéricos. El know-how se vuelve un activo que escala.</p></div>
+      <div class="card"><span class="idx">03</span><h3>Servicio que retiene clientes</h3><p>Un servicio diferenciado fortalece la relación con los clientes y respalda una propuesta de valor premium.</p></div>
+      <div class="card"><span class="idx">04</span><h3>Atractivo para el talento</h3><p>Los profesionales valoran trabajar en firmas donde la tecnología potencia su labor.</p></div>
+    </div>
+  </section>
+
+  <!-- 9 · CONFIANZA -->
+  <section class="slide">
+    <div class="kicker">Rigor y control</div>
+    <h2 class="head">Diseñado con los estándares<br>que exige una firma legal.</h2>
+    <div class="grid g4" style="margin-top:40px;">
+      <div class="card"><span class="idx">01</span><h3>Acceso por rol</h3><p>Socio, asociado y cliente acceden únicamente a la información que les corresponde.</p></div>
+      <div class="card"><span class="idx">02</span><h3>IA con resguardos</h3><p>Toda respuesta se presenta como asistencia preliminar, con nivel de confianza y revisión profesional.</p></div>
+      <div class="card"><span class="idx">03</span><h3>Trazabilidad</h3><p>Los análisis citan normas y conceptos. Transparencia, no una caja negra.</p></div>
+      <div class="card"><span class="idx">04</span><h3>Tecnología sólida</h3><p>Construido sobre un stack profesional, escalable y mantenible en el tiempo.</p></div>
+    </div>
+    <p class="small" style="margin-top:34px;">El criterio profesional siempre tiene la última palabra. La IA acelera el trabajo; el abogado decide.</p>
+  </section>
+
+  <!-- 10 · EL VALOR -->
+  <section class="slide">
+    <div class="kicker">El retorno para la firma</div>
+    <h2 class="head">Tres ejes de valor,<br>una sola decisión.</h2>
+    <div class="stats">
+      <div class="stat"><div class="n">Eficiencia</div><div class="l">Liberar tiempo profesional del trabajo repetitivo hacia la asesoría de alto valor.</div></div>
+      <div class="stat"><div class="n">Posicionamiento</div><div class="l">Consolidar a DG&amp;A como referente en innovación legal en Colombia.</div></div>
+      <div class="stat"><div class="n">Servicio</div><div class="l">Ofrecer una experiencia diferenciada que fortalece y amplía la relación con los clientes.</div></div>
+    </div>
+    <p class="lead" style="margin-top:46px;">Eficiencia operativa, posicionamiento de marca y un nuevo nivel de servicio. Una misma iniciativa, tres frentes de retorno.</p>
+  </section>
+
+  <!-- 11 · PRUEBA -->
+  <section class="slide center">
+    <div class="pill" style="margin:0 auto;">Del concepto a un producto tangible</div>
+    <h2 class="head" style="margin-top:24px;">Un prototipo funcional,<br>ya construido.</h2>
+    <p class="lead" style="margin-top:14px;">No partimos de una idea en papel. La interfaz, los módulos y el motor de IA ya existen como un prototipo avanzado. El siguiente paso es adaptarlo a los procesos y los datos de DG&amp;A.</p>
+    <p class="lead" style="margin-top:30px;color:#fff;">Les propongo un recorrido guiado por el prototipo.</p>
+  </section>
+
+  <!-- 12 · HOJA DE RUTA -->
+  <section class="slide">
+    <div class="kicker">Implementación</div>
+    <h2 class="head">Un camino claro, por fases<br>y con acompañamiento.</h2>
+    <div class="flow" style="margin-top:42px;">
+      <div class="step"><div class="num">FASE 1 · PILOTO</div><h4>Arranque guiado</h4><p>Configuración del Desk con un área de práctica y un grupo de clientes piloto, para obtener resultados tempranos.</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="num">FASE 2 · ADOPCIÓN</div><h4>Incorporación del equipo</h4><p>Capacitación a socios y asociados, ajuste del criterio de la IA y afinamiento con retroalimentación real.</p></div>
+      <div class="arrow">→</div>
+      <div class="step"><div class="num">FASE 3 · ESCALA</div><h4>Despliegue completo</h4><p>Extensión del portal a todos los clientes y consolidación del Desk en la operación de la firma.</p></div>
+    </div>
+    <p class="small" style="margin-top:34px;">Acompañamiento en cada fase. No se trata de entregar un software, sino de implementarlo junto al equipo.</p>
+  </section>
+
+  <!-- 13 · PRÓXIMOS PASOS -->
+  <section class="slide">
+    <div class="kicker">Próximos pasos</div>
+    <h2 class="head">Comenzar por un piloto<br>acotado y medible.</h2>
+    <div class="list" style="margin-top:32px;">
+      <div class="row"><div class="num">—</div><div class="txt"><b>En esta sesión:</b> <span>acordar el avance y definir el área de práctica y los clientes del piloto.</span></div></div>
+      <div class="row"><div class="num">—</div><div class="txt"><b>Esta semana:</b> <span>sesión de configuración del Desk con la identidad y los lineamientos de DG&amp;A.</span></div></div>
+      <div class="row"><div class="num">—</div><div class="txt"><b>Próximas semanas:</b> <span>piloto en operación, primeros resultados y definición del plan de despliegue.</span></div></div>
+    </div>
+    <p class="lead" style="margin-top:38px;color:#fff;">La oportunidad de posicionarse como referente está abierta hoy. Propongo dar el primer paso con un piloto.</p>
+  </section>
+
+  <!-- 14 · CIERRE -->
+  <section class="slide center">
+    <img class="js-logo" alt="DG&A" style="height:66px;margin:0 auto 42px;" />
+    <p class="quote playfair" style="margin:0 auto;">Llevemos a DG&amp;A a la nueva<br>etapa de la <span class="accent">práctica legal.</span></p>
+    <p class="lead" style="margin-top:34px;">DG&amp;A · Legal Intelligence Desk</p>
+    <div class="cover-meta" style="justify-content:center;margin-top:18px;">
+      <div>Gracias.</div>
+      <div style="width:1px;height:20px;background:var(--line);"></div>
+      <div>Quedo atento a sus comentarios.</div>
+    </div>
+  </section>
+
+</div>
+
+<div class="chrome">
+  <div class="brandmark">DG&amp;A · <b>Legal Intelligence Desk</b></div>
+  <div class="nav">
+    <button id="prev" aria-label="Anterior">&lsaquo;</button>
+    <span class="counter" id="counter">1 / 14</span>
+    <button id="next" aria-label="Siguiente">&rsaquo;</button>
+  </div>
+</div>
+
+<script>
+  // Logo embebido como data-URI (se inyecta abajo). Carga siempre, sin depender de rutas.
+  const LOGO = "data:image/png;base64,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";
+  document.querySelectorAll('.js-logo').forEach(function (el) { el.src = LOGO; });
+
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  let i = 0;
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, idx) { s.classList.toggle('active', idx === i); });
+    counter.textContent = (i + 1) + ' / ' + slides.length;
+    progress.style.width = ((i + 1) / slides.length * 100) + '%';
+  }
+  function nextSlide() { show(i + 1); }
+  function prevSlide() { show(i - 1); }
+
+  document.getElementById('next').addEventListener('click', nextSlide);
+  document.getElementById('prev').addEventListener('click', prevSlide);
+  document.addEventListener('keydown', function (e) {
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); nextSlide(); }
+    else if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); prevSlide(); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key.toLowerCase() === 'f') {
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+      else document.exitFullscreen();
+    }
+  });
+  var x0 = null;
+  document.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (x0 === null) return;
+    var dx = e.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 50) (dx < 0 ? nextSlide() : prevSlide());
+    x0 = null;
+  }, { passive: true });
+
+  show(0);
+</script>
+</body>
+</html>

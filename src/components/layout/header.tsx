@@ -1,9 +1,11 @@
 "use client"
 import { useState, useRef, useEffect } from 'react'
-import { Bell, Search, ChevronDown, LogOut, User, Settings } from 'lucide-react'
+import { Search, ChevronDown, LogOut, User, Settings, Menu } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useRoleStore } from '@/shared/stores/role-store'
+import { useUIStore } from '@/shared/stores/ui-store'
 import { useRouter } from 'next/navigation'
+import { NotificationsBell } from './notifications-bell'
 import type { UserRole } from '@/shared/types'
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -24,6 +26,7 @@ const ROLES: UserRole[] = ['socio', 'asociado', 'admin', 'cliente']
 
 export function Header({ title }: { title?: string }) {
   const { currentRole, setRole } = useRoleStore()
+  const { toggleMobileNav } = useUIStore()
   const user = ROLE_USERS[currentRole]
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -45,9 +48,19 @@ export function Header({ title }: { title?: string }) {
   }
 
   return (
-    <header className="fixed top-0 left-[220px] right-0 h-14 bg-white border-b border-border z-30 flex items-center justify-between px-6 gap-4">
+    <header className="fixed top-0 left-0 lg:left-[220px] right-0 h-14 bg-white border-b border-border z-30 flex items-center justify-between px-3 sm:px-6 gap-2 sm:gap-4">
+      {/* Hamburguesa (solo móvil/tablet) */}
+      <button
+        type="button"
+        onClick={toggleMobileNav}
+        aria-label="Abrir menú"
+        className="lg:hidden flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-lg hover:bg-muted transition-colors"
+      >
+        <Menu className="w-5 h-5 text-foreground" />
+      </button>
+
       {/* Search bar */}
-      <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-3 py-2 w-64 flex-shrink-0">
+      <div className="hidden md:flex items-center gap-2 bg-muted/60 rounded-lg px-3 py-2 w-44 lg:w-64 flex-shrink-0">
         <Search className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
         <input
           type="text"
@@ -57,16 +70,16 @@ export function Header({ title }: { title?: string }) {
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-3 ml-auto">
-        {/* Demo Role Switcher */}
-        <div className="flex items-center gap-0.5 bg-muted rounded-lg p-1">
-          <span className="text-[10px] text-muted-foreground px-2 font-medium whitespace-nowrap">Demo:</span>
+      <div className="flex items-center gap-2 sm:gap-3 ml-auto min-w-0">
+        {/* Demo Role Switcher (con scroll horizontal en pantallas estrechas) */}
+        <div className="flex items-center gap-0.5 bg-muted rounded-lg p-1 overflow-x-auto max-w-[55vw] sm:max-w-none">
+          <span className="hidden sm:inline text-[10px] text-muted-foreground px-2 font-medium whitespace-nowrap">Demo:</span>
           {ROLES.map(role => (
             <button
               key={role}
               type="button"
               onClick={() => setRole(role)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                 currentRole === role
                   ? 'bg-brand-navy text-white shadow-sm'
                   : 'text-muted-foreground hover:text-foreground hover:bg-background'
@@ -78,10 +91,7 @@ export function Header({ title }: { title?: string }) {
         </div>
 
         {/* Notifications */}
-        <button type="button" title="Notificaciones" className="relative w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors">
-          <Bell className="w-4 h-4 text-muted-foreground" />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
-        </button>
+        <NotificationsBell />
 
         {/* User dropdown */}
         <div className="relative" ref={menuRef}>
@@ -112,23 +122,26 @@ export function Header({ title }: { title?: string }) {
                   {ROLE_LABELS[currentRole]}
                 </span>
               </div>
-              {/* Menu items */}
+              {/* Mi perfil — todos los roles */}
               <button
                 type="button"
-                onClick={() => { setMenuOpen(false); router.push('/configuracion') }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
-              >
-                <Settings className="w-3.5 h-3.5 text-muted-foreground" />
-                Configuración
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMenuOpen(false); router.push('/configuracion') }}
+                onClick={() => { setMenuOpen(false); router.push('/perfil') }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
               >
                 <User className="w-3.5 h-3.5 text-muted-foreground" />
                 Mi perfil
               </button>
+              {/* Configuración — solo socio y admin */}
+              {(currentRole === 'socio' || currentRole === 'admin') && (
+                <button
+                  type="button"
+                  onClick={() => { setMenuOpen(false); router.push('/configuracion') }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
+                >
+                  <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                  Configuración
+                </button>
+              )}
               <div className="border-t border-border mt-1 pt-1">
                 <button
                   type="button"

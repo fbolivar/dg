@@ -103,7 +103,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex gap-6">
+    <div className="flex flex-col lg:flex-row gap-6">
       {/* Main column */}
       <div className="flex-1 min-w-0 space-y-6">
         {/* Page header */}
@@ -121,7 +121,7 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI Cards — 3 columns */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiCard
             label="Alertas nuevas"
             value={String(dashboardStats.alertas_nuevas)}
@@ -149,7 +149,7 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <KpiCard
             label="Docs. pendientes"
             value={String(dashboardStats.documentos_pendientes)}
@@ -245,7 +245,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Right panel */}
-      <div className="w-[260px] flex-shrink-0 space-y-4">
+      <div className="w-full lg:w-[260px] lg:flex-shrink-0 space-y-4">
         {/* IA hours trend */}
         <Card>
           <CardHeader className="pb-1">

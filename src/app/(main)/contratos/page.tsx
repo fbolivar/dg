@@ -169,7 +169,7 @@ export default function ContratosPage() {
 
       <AiDisclaimer message="Los análisis son generados con IA y requieren revisión de abogado DG&A antes de ser utilizados." variant="banner" />
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total documentos', value: stats.total, color: 'text-foreground', sub: 'Registrados' },
           { label: 'Pendientes', value: stats.pendiente, color: 'text-gray-600', sub: 'Sin análisis' },

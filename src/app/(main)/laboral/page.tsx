@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
-import { Users, Send, AlertTriangle, Clock, CheckCircle, Plus, Pencil, Trash2, AlertCircle, X, Loader2 } from 'lucide-react'
+import { Users, Send, AlertTriangle, Clock, CheckCircle, Plus, Pencil, Trash2, AlertCircle, X, Loader2, Filter } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -47,6 +47,7 @@ export default function LaboralPage() {
 
   useEffect(() => { if (dbHrTickets.length > 0) setTickets(dbHrTickets.map(t => ({ ...t }))) }, [dbHrTickets])
   const [selected, setSelected] = useState<HRTicket | null>(null)
+  const [activeTopicFilter, setActiveTopicFilter] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [editingResponse, setEditingResponse] = useState(false)
   const [responseText, setResponseText] = useState('')
@@ -56,6 +57,10 @@ export default function LaboralPage() {
   const [toast, setToast] = useState('')
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
+
+  const filteredTickets = activeTopicFilter
+    ? tickets.filter(t => t.topic === activeTopicFilter)
+    : tickets
 
   const stats = {
     total: tickets.length,
@@ -127,16 +132,46 @@ export default function LaboralPage() {
       {/* Left: Topics */}
       <div className="w-52 flex-shrink-0">
         <div className="bg-white rounded-lg border border-border overflow-hidden">
-          <div className="px-3 py-2.5 border-b border-border bg-muted/50">
+          <div className="px-3 py-2.5 border-b border-border bg-muted/50 flex items-center justify-between">
             <p className="text-xs font-semibold text-foreground">Temas cubiertos</p>
+            {activeTopicFilter && (
+              <button type="button" title="Quitar filtro" onClick={() => setActiveTopicFilter(null)}
+                className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-0.5">
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
           <div className="p-2 space-y-0.5">
-            {LABOR_TOPICS.map(topic => (
-              <button type="button" key={topic} onClick={() => setNewTicket(p => ({ ...p, topic }))}
-                className="w-full text-left text-xs px-2.5 py-2 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-                {topic}
-              </button>
-            ))}
+            {LABOR_TOPICS.map(topic => {
+              const count = tickets.filter(t => t.topic === topic).length
+              const isActive = activeTopicFilter === topic
+              return (
+                <div key={topic} className={`group flex items-center rounded-md transition-colors ${isActive ? 'bg-brand-navy/10' : 'hover:bg-muted'}`}>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTopicFilter(isActive ? null : topic)}
+                    className={`flex-1 text-left text-xs px-2.5 py-2 transition-colors ${isActive ? 'text-brand-navy font-semibold' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    <span className="flex items-center justify-between">
+                      <span>{topic}</span>
+                      {count > 0 && (
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${isActive ? 'bg-brand-navy text-white' : 'bg-muted-foreground/20 text-muted-foreground'}`}>
+                          {count}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    title={`Nueva consulta: ${topic}`}
+                    onClick={() => { setNewTicket(p => ({ ...p, topic })); setCreating(true) }}
+                    className="opacity-0 group-hover:opacity-100 p-1.5 mr-1 rounded hover:bg-brand-navy/10 text-muted-foreground hover:text-brand-navy transition-all"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -153,7 +188,7 @@ export default function LaboralPage() {
 
         <AiDisclaimer message="Las respuestas son orientativas. Los casos sensibles requieren criterio de abogado DG&A antes de actuar." variant="banner" />
 
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Total consultas', value: stats.total, color: 'text-foreground', sub: 'Registradas' },
             { label: 'Abiertas', value: stats.abiertas, color: 'text-blue-600', sub: 'Sin respuesta' },
@@ -167,6 +202,17 @@ export default function LaboralPage() {
             </CardContent></Card>
           ))}
         </div>
+
+        {activeTopicFilter && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-brand-navy/5 border border-brand-navy/20 rounded-lg text-xs text-brand-navy">
+            <Filter className="w-3.5 h-3.5" />
+            Mostrando consultas de <span className="font-semibold">{activeTopicFilter}</span>
+            <span className="text-muted-foreground">({filteredTickets.length})</span>
+            <button type="button" onClick={() => setActiveTopicFilter(null)} className="ml-auto flex items-center gap-1 hover:text-foreground">
+              <X className="w-3 h-3" /> Quitar filtro
+            </button>
+          </div>
+        )}
 
         <Card>
           <CardContent className="p-0">
@@ -183,7 +229,16 @@ export default function LaboralPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tickets.map(ticket => {
+                {filteredTickets.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-10 text-sm text-muted-foreground">
+                      {activeTopicFilter ? `No hay consultas de "${activeTopicFilter}" — ` : 'Sin consultas — '}
+                      <button type="button" className="underline hover:text-foreground" onClick={() => { if (activeTopicFilter) setNewTicket(p => ({ ...p, topic: activeTopicFilter })); setCreating(true) }}>
+                        crear la primera
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredTickets.map(ticket => {
                   const sc = TICKET_STATUS[ticket.status]
                   const SIcon = sc.icon
                   return (

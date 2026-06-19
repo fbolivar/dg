@@ -1,7 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Límite por campo: evita payloads abusivos hacia el modelo.
+const MAX_FIELD_CHARS = 4000
+
+function str(v: unknown): string {
+  return typeof v === 'string' ? v.slice(0, MAX_FIELD_CHARS) : ''
+}
+
 export async function POST(req: NextRequest) {
-  const { alert_title, alert_summary, alert_recommendation, audience, tone, practice_area } = await req.json()
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 })
+  }
+
+  const b = (body ?? {}) as Record<string, unknown>
+  const alert_title = str(b.alert_title)
+  const alert_summary = str(b.alert_summary)
+  const alert_recommendation = str(b.alert_recommendation)
+  const audience = str(b.audience)
+  const tone = str(b.tone)
+  const practice_area = str(b.practice_area)
+
+  if (!alert_title || !audience || !tone) {
+    return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
@@ -41,7 +65,7 @@ Usa lenguaje formal, preciso y colombiano. Evita tecnicismos innecesarios cuando
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     }),

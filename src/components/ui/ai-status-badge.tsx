@@ -11,5 +11,5 @@ const STATUS_MAP: Record<string, { label: string; variant: 'borrador' | 'revisio
 
 export function AiStatusBadge({ status }: { status: string }) {
   const config = STATUS_MAP[status] ?? { label: status, variant: 'default' as const }
-  return <Badge variant={config.variant as NoteStatus}>{config.label}</Badge>
+  return <Badge variant={config.variant}>{config.label}</Badge>
 }
