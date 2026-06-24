@@ -7,10 +7,10 @@
 (vacio)
 
 ## project/ — Proyectos y decisiones activas
-(vacio)
+- [DGA-Time + Captura Inteligente](project/dgatime-captura-inteligente.md) — feature OAuth correo/calendario + Rama Judicial; commit 36f1a9f, esquema verificado, falta config OAuth en env
 
 ## feedback/ — Correcciones y preferencias
 (vacio)
 
 ## reference/ — Donde encontrar cosas
-(vacio)
+- [Supabase dga-legal](reference/supabase-dga-legal.md) — ref kbjihgmpmfccpmhbotys, sa-east-1; usar MCP claude_ai_Supabase (el otro da Unauthorized)
