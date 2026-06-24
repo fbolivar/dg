@@ -4,7 +4,8 @@ import * as db from '@/shared/services/db'
 import type {
   Client, User, PracticeArea, Alert, LegalNote, Document,
   ContractReview, DueDiligenceProject, DueDiligenceFinding,
-  Matter, MatterEvent, ComplianceDiagnostic, HRTicket
+  Matter, MatterEvent, ComplianceDiagnostic, HRTicket,
+  JudicialProcess, JudicialActuacion
 } from '@/shared/types'
 
 type DataState = {
@@ -21,6 +22,8 @@ type DataState = {
   dueDiligenceFindings: DueDiligenceFinding[]
   complianceDiagnostics: ComplianceDiagnostic[]
   hrTickets: HRTicket[]
+  judicialProcesses: JudicialProcess[]
+  judicialActuaciones: JudicialActuacion[]
   loading: boolean
   refresh: (table: string) => Promise<void>
 }
@@ -41,11 +44,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [dueDiligenceFindings, setDueDiligenceFindings] = useState<DueDiligenceFinding[]>([])
   const [complianceDiagnostics, setComplianceDiagnostics] = useState<ComplianceDiagnostic[]>([])
   const [hrTickets, setHRTickets] = useState<HRTicket[]>([])
+  const [judicialProcesses, setJudicialProcesses] = useState<JudicialProcess[]>([])
+  const [judicialActuaciones, setJudicialActuaciones] = useState<JudicialActuacion[]>([])
   const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async (table: string) => {
     switch (table) {
       case 'clients': setClients(await db.getClients()); break
+      case 'practice_areas': setPracticeAreas(await db.getPracticeAreas()); break
       case 'users': setUsers(await db.getUsers()); break
       case 'alerts': setAlerts(await db.getAlerts()); break
       case 'legal_notes': setLegalNotes(await db.getLegalNotes()); break
@@ -57,6 +63,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       case 'due_diligence_findings': setDueDiligenceFindings(await db.getDueDiligenceFindings()); break
       case 'compliance_diagnostics': setComplianceDiagnostics(await db.getComplianceDiagnostics()); break
       case 'hr_tickets': setHRTickets(await db.getHRTickets()); break
+      case 'judicial_processes': setJudicialProcesses(await db.getJudicialProcesses()); break
+      case 'judicial_actuaciones': setJudicialActuaciones(await db.getJudicialActuaciones()); break
     }
   }, [])
 
@@ -64,7 +72,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     async function loadAll() {
       setLoading(true)
       const [
-        c, u, pa, a, ln, d, cr, m, me, dd, ddf, comp, hr
+        c, u, pa, a, ln, d, cr, m, me, dd, ddf, comp, hr, jp, ja
       ] = await Promise.all([
         db.getClients(),
         db.getUsers(),
@@ -79,6 +87,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         db.getDueDiligenceFindings(),
         db.getComplianceDiagnostics(),
         db.getHRTickets(),
+        db.getJudicialProcesses(),
+        db.getJudicialActuaciones(),
       ])
       setClients(c)
       setUsers(u)
@@ -93,6 +103,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setDueDiligenceFindings(ddf)
       setComplianceDiagnostics(comp)
       setHRTickets(hr)
+      setJudicialProcesses(jp)
+      setJudicialActuaciones(ja)
       setLoading(false)
     }
     loadAll()
@@ -102,7 +114,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     <DataContext.Provider value={{
       clients, users, practiceAreas, alerts, legalNotes, documents,
       contractReviews, matters, matterEvents, dueDiligenceProjects,
-      dueDiligenceFindings, complianceDiagnostics, hrTickets, loading, refresh,
+      dueDiligenceFindings, complianceDiagnostics, hrTickets,
+      judicialProcesses, judicialActuaciones, loading, refresh,
     }}>
       {children}
     </DataContext.Provider>

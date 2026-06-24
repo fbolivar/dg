@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getSession } from '@/shared/lib/auth'
 
 // Límite por campo: evita payloads abusivos hacia el modelo.
 const MAX_FIELD_CHARS = 4000
@@ -8,6 +9,10 @@ function str(v: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
+  if (!(await getSession())) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+  }
+
   let body: unknown
   try {
     body = await req.json()
@@ -76,7 +81,7 @@ Usa lenguaje formal, preciso y colombiano. Evita tecnicismos innecesarios cuando
   }
 
   const data = await response.json()
-  const raw = data.content[0]?.text ?? ''
+  const raw = data?.content?.[0]?.text ?? ''
 
   const extract = (label: string) => {
     const regex = new RegExp(`## ${label}\\n([\\s\\S]*?)(?=\\n## |$)`, 'i')

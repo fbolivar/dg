@@ -61,8 +61,8 @@ export default function ContratosPage() {
   const [docs, setDocs] = useState<Document[]>([])
   const [reviews, setReviews] = useState<ContractReview[]>([])
 
-  useEffect(() => { if (dbDocuments.length > 0) setDocs(dbDocuments.map(d => ({ ...d }))) }, [dbDocuments])
-  useEffect(() => { if (dbContractReviews.length > 0) setReviews(dbContractReviews.map(r => ({ ...r }))) }, [dbContractReviews])
+  useEffect(() => { setDocs(dbDocuments.map(d => ({ ...d }))) }, [dbDocuments])
+  useEffect(() => { setReviews(dbContractReviews.map(r => ({ ...r }))) }, [dbContractReviews])
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null)
   const [showUpload, setShowUpload] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Document | null>(null)

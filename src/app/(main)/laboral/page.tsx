@@ -45,7 +45,7 @@ export default function LaboralPage() {
   const { hrTickets: dbHrTickets, clients } = useData()
   const [tickets, setTickets] = useState<HRTicket[]>([])
 
-  useEffect(() => { if (dbHrTickets.length > 0) setTickets(dbHrTickets.map(t => ({ ...t }))) }, [dbHrTickets])
+  useEffect(() => { setTickets(dbHrTickets.map(t => ({ ...t }))) }, [dbHrTickets])
   const [selected, setSelected] = useState<HRTicket | null>(null)
   const [activeTopicFilter, setActiveTopicFilter] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)

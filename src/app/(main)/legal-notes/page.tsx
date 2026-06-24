@@ -36,7 +36,7 @@ export default function LegalNotesPage() {
   const { legalNotes: dbLegalNotes, alerts, practiceAreas } = useData()
   const [notes, setNotes] = useState<LegalNote[]>([])
 
-  useEffect(() => { if (dbLegalNotes.length > 0) setNotes(dbLegalNotes.map(n => ({ ...n }))) }, [dbLegalNotes])
+  useEffect(() => { setNotes(dbLegalNotes.map(n => ({ ...n }))) }, [dbLegalNotes])
   const [selected, setSelected] = useState<LegalNote | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [editDraft, setEditDraft] = useState({ content_draft: '', content_email: '', content_linkedin: '', content_summary: '', title: '' })

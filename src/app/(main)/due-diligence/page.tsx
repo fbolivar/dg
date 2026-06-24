@@ -53,8 +53,8 @@ export default function DueDiligencePage() {
   const [projects, setProjects] = useState<DueDiligenceProject[]>([])
   const [findings, setFindings] = useState<DueDiligenceFinding[]>([])
 
-  useEffect(() => { if (dbProjects.length > 0) setProjects(dbProjects.map(p => ({ ...p }))) }, [dbProjects])
-  useEffect(() => { if (dbFindings.length > 0) setFindings(dbFindings.map(f => ({ ...f }))) }, [dbFindings])
+  useEffect(() => { setProjects(dbProjects.map(p => ({ ...p }))) }, [dbProjects])
+  useEffect(() => { setFindings(dbFindings.map(f => ({ ...f }))) }, [dbFindings])
   const [selectedProject, setSelectedProject] = useState<DueDiligenceProject | null>(null)
   const [showProjForm, setShowProjForm] = useState(false)
   const [editingProj, setEditingProj] = useState<DueDiligenceProject | null>(null)

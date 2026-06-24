@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from 'react'
-import { Scale, Calendar, Clock, FileText, Plus, Pencil, Trash2, AlertCircle, X, PlusCircle } from 'lucide-react'
+import { Scale, Calendar, Clock, FileText, Plus, Pencil, Trash2, AlertCircle, X, PlusCircle, Check } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,7 @@ import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { useData } from '@/shared/context/data-context'
 import * as db from '@/shared/services/db'
-import type { Matter, MatterEvent, MatterStatus } from '@/shared/types'
+import type { Matter, MatterEvent, MatterStatus, DgaCurrency, MatterOutcome } from '@/shared/types'
 
 const MATTER_STATUS_MAP: Record<MatterStatus, { label: string; class: string }> = {
   activo: { label: 'Activo', class: 'bg-green-100 text-green-800 border-green-200' },
@@ -28,6 +28,8 @@ const EMPTY_FORM = {
   jurisdiction: '', parties: '', process_state: '', estimated_risk: '',
   success_probability: '', next_action: '', next_deadline: '',
   status: 'activo' as MatterStatus, assigned_to: 'u2',
+  budget_hours: '', budget_amount: '', budget_currency: 'COP' as DgaCurrency,
+  outcome: 'en_curso' as MatterOutcome, satisfaction: '',
 }
 const EMPTY_EVENT = { event_type: '', event_date: '', description: '' }
 
@@ -44,8 +46,8 @@ export default function LitigiosPage() {
   const [matters, setMatters] = useState<Matter[]>([])
   const [events, setEvents] = useState<MatterEvent[]>([])
 
-  useEffect(() => { if (dbMatters.length > 0) setMatters(dbMatters.map(m => ({ ...m }))) }, [dbMatters])
-  useEffect(() => { if (dbMatterEvents.length > 0) setEvents(dbMatterEvents.map(e => ({ ...e }))) }, [dbMatterEvents])
+  useEffect(() => { setMatters(dbMatters.map(m => ({ ...m }))) }, [dbMatters])
+  useEffect(() => { setEvents(dbMatterEvents.map(e => ({ ...e }))) }, [dbMatterEvents])
   const [selected, setSelected] = useState<Matter | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Matter | null>(null)
@@ -76,6 +78,11 @@ export default function LitigiosPage() {
       success_probability: m.success_probability?.toString() ?? '',
       next_action: m.next_action ?? '', next_deadline: m.next_deadline ?? '',
       status: m.status, assigned_to: m.assigned_to,
+      budget_hours: m.budget_hours != null ? String(m.budget_hours) : '',
+      budget_amount: m.budget_amount != null ? String(m.budget_amount) : '',
+      budget_currency: m.budget_currency ?? 'COP',
+      outcome: m.outcome ?? 'en_curso',
+      satisfaction: m.satisfaction != null ? String(m.satisfaction) : '',
     })
     setEditing(m); setSelected(null); setShowForm(true)
   }
@@ -89,6 +96,10 @@ export default function LitigiosPage() {
       ...form,
       client, practice_area: pa, assigned_user: user,
       success_probability: form.success_probability ? parseInt(form.success_probability) : undefined,
+      budget_hours: form.budget_hours ? Number(form.budget_hours) : undefined,
+      budget_amount: form.budget_amount ? Number(form.budget_amount) : undefined,
+      budget_currency: form.budget_currency,
+      satisfaction: form.satisfaction ? Number(form.satisfaction) : undefined,
       updated_at: new Date().toISOString(),
     }
     if (editing) {
@@ -113,6 +124,15 @@ export default function LitigiosPage() {
     if (selected?.id === deleteTarget.id) setSelected(null)
     showToast('Asunto eliminado')
     setDeleteTarget(null)
+  }
+
+  const recordDeadline = async (onTime: boolean) => {
+    if (!selected) return
+    await db.recordMatterDeadline(selected.id, onTime)
+    const upd = { deadlines_total: (selected.deadlines_total ?? 0) + 1, deadlines_ontime: (selected.deadlines_ontime ?? 0) + (onTime ? 1 : 0) }
+    setMatters(prev => prev.map(m => m.id === selected.id ? { ...m, ...upd } : m))
+    setSelected(prev => prev ? { ...prev, ...upd } : prev)
+    showToast(onTime ? 'Plazo registrado: a tiempo' : 'Plazo registrado: tarde')
   }
 
   const changeStatus = async (matterId: string, status: MatterStatus) => {
@@ -304,6 +324,24 @@ export default function LitigiosPage() {
                   </div>
                 )}
 
+                {/* Cumplimiento de plazos */}
+                <div className="bg-muted/40 border border-border rounded-md p-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <p className="text-xs font-semibold">Cumplimiento de plazos</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {(selected.deadlines_total ?? 0) > 0
+                          ? `${selected.deadlines_ontime ?? 0}/${selected.deadlines_total} a tiempo (${Math.round((selected.deadlines_ontime ?? 0) / (selected.deadlines_total ?? 1) * 100)}%)`
+                          : 'Sin plazos registrados aún'}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => recordDeadline(true)}><Check className="w-3 h-3 mr-1" />A tiempo</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600" onClick={() => recordDeadline(false)}>Tarde</Button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Timeline */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -438,6 +476,51 @@ export default function LitigiosPage() {
             <div className="space-y-1">
               <Label className="text-xs">Próxima acción recomendada</Label>
               <Textarea value={form.next_action} onChange={e => setForm(p => ({ ...p, next_action: e.target.value }))} rows={2} className="text-sm resize-none" />
+            </div>
+            {/* Presupuesto del asunto (DGA-Time) */}
+            <div className="pt-2 border-t border-border">
+              <p className="text-[11px] font-medium text-muted-foreground mb-1.5">Presupuesto del asunto (opcional) · se compara contra las horas reales en DGA-Time</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Horas presupuestadas</Label>
+                  <Input type="number" min="0" value={form.budget_hours} onChange={e => setForm(p => ({ ...p, budget_hours: e.target.value }))} className="h-8 text-sm" placeholder="Ej. 40" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Monto presupuestado</Label>
+                  <Input type="number" min="0" value={form.budget_amount} onChange={e => setForm(p => ({ ...p, budget_amount: e.target.value }))} className="h-8 text-sm" placeholder="Ej. 10000000" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Moneda</Label>
+                  <Select value={form.budget_currency} onValueChange={v => setForm(p => ({ ...p, budget_currency: v as DgaCurrency }))}>
+                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="COP" className="text-xs">COP</SelectItem><SelectItem value="USD" className="text-xs">USD</SelectItem></SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <div className="pt-2 border-t border-border grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Resultado del caso</Label>
+                <Select value={form.outcome} onValueChange={v => setForm(p => ({ ...p, outcome: v as MatterOutcome }))}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en_curso" className="text-xs">En curso</SelectItem>
+                    <SelectItem value="ganado" className="text-xs">Ganado</SelectItem>
+                    <SelectItem value="perdido" className="text-xs">Perdido</SelectItem>
+                    <SelectItem value="desistido" className="text-xs">Desistido</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Satisfacción cliente (1–5)</Label>
+                <Select value={form.satisfaction || 'none'} onValueChange={v => setForm(p => ({ ...p, satisfaction: v === 'none' ? '' : v }))}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Sin registrar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="text-xs">Sin registrar</SelectItem>
+                    {[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={String(n)} className="text-xs">{n} ★</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>

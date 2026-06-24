@@ -113,12 +113,39 @@
   .flow .arrow { display:flex; align-items:center; color: var(--gold); font-size:1.1rem; padding: 0 10px; }
 
   .cover-logo { height: 84px; margin-bottom: 48px; }
+
+  /* Logotipo tipográfico (vectorial, nítido a cualquier tamaño) */
+  .brand-logo { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.05; }
+  .brand-logo .bl-main {
+    font-family: 'Playfair Display', serif; font-weight: 500; color: #fff;
+    font-size: var(--logo-size, 3.2rem); letter-spacing: 0.12em; padding-left: 0.12em;
+  }
+  .brand-logo .bl-sub {
+    font-family: 'Inter', sans-serif; font-weight: 400; color: rgba(255,255,255,0.82);
+    font-size: calc(var(--logo-size, 3.2rem) * 0.2);
+    letter-spacing: 0.5em; padding-left: 0.5em;
+    margin-top: calc(var(--logo-size, 3.2rem) * 0.15);
+    padding-top: calc(var(--logo-size, 3.2rem) * 0.13);
+    border-top: 1px solid var(--gold);
+  }
   .cover-meta { margin-top: 56px; display:flex; gap: 36px; align-items:center; color: var(--muted); font-size:.9rem; font-weight: 300; }
   .cover-meta b { color: #fff; font-weight:500; }
 
   .center { align-items: center; text-align: center; }
   .center .lead { margin-left:auto; margin-right:auto; }
   .quote { font-size: clamp(1.5rem, 3vw, 2.5rem); font-weight: 500; line-height: 1.3; max-width: 26ch; }
+
+  /* Botón de demo en vivo (slide de cierre) */
+  .demolink {
+    display: inline-flex; flex-direction: column; align-items: center; gap: 6px;
+    margin: 34px auto 0; padding: 16px 42px; border-radius: 8px;
+    border: 1px solid rgba(184,150,46,0.5); background: rgba(184,150,46,0.08);
+    text-decoration: none; transition: all .25s ease;
+  }
+  .demolink:hover { background: var(--gold); border-color: var(--gold); transform: translateY(-2px); }
+  .demolink-label { font-size: .66rem; letter-spacing: .22em; text-transform: uppercase; color: var(--gold-light); }
+  .demolink-url { font-family: 'Playfair Display', serif; font-size: clamp(1.2rem, 2.2vw, 1.6rem); font-weight: 600; color: #fff; }
+  .demolink:hover .demolink-label, .demolink:hover .demolink-url { color: var(--navy-dark); }
 
   .chrome { position: fixed; bottom: 22px; left: 0; right: 0; z-index: 50;
     display:flex; align-items:center; justify-content: space-between; padding: 0 36px; pointer-events:none; }
@@ -153,7 +180,10 @@
 
   <!-- 1 · PORTADA -->
   <section class="slide active">
-    <img class="cover-logo js-logo" alt="DG&A" />
+    <div class="brand-logo" style="--logo-size:clamp(2.8rem,6vw,4.4rem);margin-bottom:48px;align-self:flex-start;">
+      <span class="bl-main">DG&amp;A</span>
+      <span class="bl-sub">ABOGADOS</span>
+    </div>
     <div class="pill">Propuesta estratégica · Documento confidencial</div>
     <h1 class="title playfair" style="margin-top:28px;">Legal Intelligence Desk</h1>
     <p class="lead" style="margin-top:24px;">Una plataforma de inteligencia legal asistida por IA, construida sobre el criterio y los estándares de DG&amp;A Abogados.</p>
@@ -285,8 +315,8 @@
   <section class="slide center">
     <div class="pill" style="margin:0 auto;">Del concepto a un producto tangible</div>
     <h2 class="head" style="margin-top:24px;">Un prototipo funcional,<br>ya construido.</h2>
-    <p class="lead" style="margin-top:14px;">No partimos de una idea en papel. La interfaz, los módulos y el motor de IA ya existen como un prototipo avanzado. El siguiente paso es adaptarlo a los procesos y los datos de DG&amp;A.</p>
-    <p class="lead" style="margin-top:30px;color:#fff;">Les propongo un recorrido guiado por el prototipo.</p>
+    <p class="lead" style="margin-top:14px;">No partimos de una idea en papel. La interfaz, los módulos y el motor de IA ya existen como un prototipo avanzado —en línea y funcional en computador, tableta y celular—. El siguiente paso es adaptarlo a los procesos y los datos de DG&amp;A.</p>
+    <p class="lead" style="margin-top:30px;color:#fff;">Les propongo un recorrido guiado en vivo; pueden seguirlo desde sus propios dispositivos.</p>
   </section>
 
   <!-- 12 · HOJA DE RUTA -->
@@ -317,10 +347,18 @@
 
   <!-- 14 · CIERRE -->
   <section class="slide center">
-    <img class="js-logo" alt="DG&A" style="height:66px;margin:0 auto 42px;" />
+    <div class="brand-logo" style="--logo-size:clamp(1.9rem,4vw,2.7rem);margin:0 auto 30px;">
+      <span class="bl-main">DG&amp;A</span>
+      <span class="bl-sub">ABOGADOS</span>
+    </div>
     <p class="quote playfair" style="margin:0 auto;">Llevemos a DG&amp;A a la nueva<br>etapa de la <span class="accent">práctica legal.</span></p>
-    <p class="lead" style="margin-top:34px;">DG&amp;A · Legal Intelligence Desk</p>
-    <div class="cover-meta" style="justify-content:center;margin-top:18px;">
+
+    <a href="https://dga-legal.vercel.app" target="_blank" rel="noopener" class="demolink">
+      <span class="demolink-label">Demo en vivo · prototipo</span>
+      <span class="demolink-url">dga-legal.vercel.app</span>
+    </a>
+
+    <div class="cover-meta" style="justify-content:center;margin-top:30px;">
       <div>Gracias.</div>
       <div style="width:1px;height:20px;background:var(--line);"></div>
       <div>Quedo atento a sus comentarios.</div>

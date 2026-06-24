@@ -5,13 +5,6 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { useRoleStore } from '@/shared/stores/role-store'
 
-const DEMO_USERS = [
-  { email: 'cgomez@dga.com', password: 'demo1234', role: 'socio' as const, name: 'Carlos Gómez Vargas' },
-  { email: 'amartin@dga.com', password: 'demo1234', role: 'asociado' as const, name: 'Ana Martínez Díaz' },
-  { email: 'lrodriguez@dga.com', password: 'demo1234', role: 'admin' as const, name: 'Laura Rodríguez' },
-  { email: 'legal@andinaretail.com', password: 'demo1234', role: 'cliente' as const, name: 'Director Legal Andina' },
-]
-
 export default function LoginPage() {
   const router = useRouter()
   const { setRole } = useRoleStore()
@@ -21,27 +14,33 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
+  async function doLogin(em: string, pw: string) {
     setError('')
     setLoading(true)
-    await new Promise(r => setTimeout(r, 800))
-
-    const user = DEMO_USERS.find(u => u.email === email.trim().toLowerCase() && u.password === password)
-    if (user) {
-      setRole(user.role)
-      router.push('/dashboard')
-    } else {
-      setError('Correo o contraseña incorrectos')
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: em, password: pw }),
+      })
+      const data = await res.json()
+      if (res.ok && data.user) {
+        setRole(data.user.role)
+        router.push(data.user.role === 'cliente' ? '/portal' : '/dashboard')
+        router.refresh()
+      } else {
+        setError(data.error || 'Correo o contraseña incorrectos')
+        setLoading(false)
+      }
+    } catch {
+      setError('Error de conexión. Intenta de nuevo.')
       setLoading(false)
     }
   }
 
-  function quickLogin(user: typeof DEMO_USERS[0]) {
-    setEmail(user.email)
-    setPassword(user.password)
-    setRole(user.role)
-    router.push('/dashboard')
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    await doLogin(email, password)
   }
 
   return (
@@ -120,24 +119,6 @@ export default function LoginPage() {
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Ingresando...</> : 'Ingresar'}
             </button>
           </form>
-
-          {/* Demo quick access */}
-          <div className="mt-6 pt-5 border-t border-gray-100">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">Acceso rápido demo</p>
-            <div className="grid grid-cols-2 gap-2">
-              {DEMO_USERS.map(u => (
-                <button
-                  key={u.email}
-                  type="button"
-                  onClick={() => quickLogin(u)}
-                  className="text-left px-3 py-2 rounded-lg border border-gray-100 hover:border-[#1A2B4A]/30 hover:bg-[#1A2B4A]/5 transition-all"
-                >
-                  <p className="text-[11px] font-semibold text-gray-700">{u.name.split(' ')[0]} {u.name.split(' ')[1]}</p>
-                  <p className="text-[10px] text-gray-400 capitalize">{u.role}</p>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <p className="text-center text-white/30 text-[11px] mt-6">

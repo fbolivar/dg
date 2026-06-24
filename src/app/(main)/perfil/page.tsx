@@ -1,11 +1,13 @@
 "use client"
-import { useState } from 'react'
-import { User, Lock, Save, Eye, EyeOff, X, CheckCircle2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { User, Lock, Save, Eye, EyeOff, X, CheckCircle2, Plug } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useRoleStore } from '@/shared/stores/role-store'
+import { useAuthStore } from '@/shared/stores/auth-store'
+import { IntegrationsPanel } from '@/components/dgatime/integrations-panel'
 import type { UserRole } from '@/shared/types'
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -31,10 +33,23 @@ function Toast({ msg, ok, onClose }: { msg: string; ok?: boolean; onClose: () =>
 
 export default function PerfilPage() {
   const { currentRole } = useRoleStore()
+  const authUser = useAuthStore(s => s.user)
   const base = DEMO_PROFILES[currentRole]
 
   const [profile, setProfile] = useState({ ...base })
   const [profileDirty, setProfileDirty] = useState(false)
+
+  // Re-sincroniza el perfil con el usuario autenticado y el rol actual.
+  useEffect(() => {
+    const b = DEMO_PROFILES[currentRole]
+    setProfile({
+      name: authUser?.name ?? b.name,
+      email: authUser?.email ?? b.email,
+      phone: b.phone,
+      position: b.position,
+    })
+    setProfileDirty(false)
+  }, [currentRole, authUser])
 
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' })
   const [showCurrent, setShowCurrent] = useState(false)
@@ -44,6 +59,19 @@ export default function PerfilPage() {
 
   const [toast, setToast] = useState<{ msg: string; ok?: boolean } | null>(null)
   const showToast = (msg: string, ok = true) => { setToast({ msg, ok }); setTimeout(() => setToast(null), 3000) }
+
+  // Acceso a DGA-Time → muestra "Mis conexiones"
+  const hasDgatime = authUser?.role === 'socio' || authUser?.role === 'admin' || authUser?.dgatime_enabled === true
+
+  // Retorno del flujo OAuth de conexiones
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search)
+    if (p.get('connected')) showToast('Cuenta conectada correctamente')
+    else if (p.get('error') === 'no_configurado') showToast('Esa integración aún no está configurada', false)
+    else if (p.get('error')) showToast('No se pudo completar la conexión', false)
+    if (p.get('connected') || p.get('error')) window.history.replaceState({}, '', '/perfil')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function handleProfileChange(field: string, value: string) {
     setProfile(p => ({ ...p, [field]: value }))
@@ -244,6 +272,21 @@ export default function PerfilPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Mis conexiones (correo y calendario) — solo para usuarios con DGA-Time */}
+      {hasDgatime && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Plug className="w-4 h-4 text-brand-gold" />
+              Mis conexiones
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <IntegrationsPanel onMessage={(m) => showToast(m)} />
+          </CardContent>
+        </Card>
+      )}
 
       {toast && <Toast msg={toast.msg} ok={toast.ok} onClose={() => setToast(null)} />}
     </div>

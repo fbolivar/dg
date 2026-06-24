@@ -85,10 +85,8 @@ export default function CompliancePage() {
   const [checklists, setChecklists] = useState<ChecklistState>({})
 
   useEffect(() => {
-    if (dbDiags.length > 0) {
-      setDiags(dbDiags.map(d => ({ ...d })))
-      setChecklists(buildChecklist(dbDiags))
-    }
+    setDiags(dbDiags.map(d => ({ ...d })))
+    setChecklists(buildChecklist(dbDiags))
   }, [dbDiags])
   const [selected, setSelected] = useState<ComplianceDiagnostic | null>(null)
   const [showForm, setShowForm] = useState(false)

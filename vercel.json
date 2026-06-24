@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/rama-judicial/sync",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/dgatime/igualas",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/dgatime/captura",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

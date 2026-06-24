@@ -4,6 +4,7 @@ import { Search, ChevronDown, LogOut, User, Settings, Menu } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useRoleStore } from '@/shared/stores/role-store'
 import { useUIStore } from '@/shared/stores/ui-store'
+import { useAuthStore } from '@/shared/stores/auth-store'
 import { useRouter } from 'next/navigation'
 import { NotificationsBell } from './notifications-bell'
 import type { UserRole } from '@/shared/types'
@@ -15,19 +16,19 @@ const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Administrador',
 }
 
-const ROLE_USERS: Record<UserRole, { name: string; initials: string; email: string }> = {
-  socio: { name: 'Carlos Gómez V.', initials: 'CG', email: 'cgomez@dga.com' },
-  asociado: { name: 'Ana Martínez D.', initials: 'AM', email: 'amartin@dga.com' },
-  cliente: { name: 'María Ospina', initials: 'MO', email: 'legal@andinaretail.com' },
-  admin: { name: 'Laura Rodríguez S.', initials: 'LR', email: 'lrodriguez@dga.com' },
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || 'DG'
 }
 
-const ROLES: UserRole[] = ['socio', 'asociado', 'admin', 'cliente']
-
 export function Header({ title }: { title?: string }) {
-  const { currentRole, setRole } = useRoleStore()
+  const { currentRole } = useRoleStore()
   const { toggleMobileNav } = useUIStore()
-  const user = ROLE_USERS[currentRole]
+  const authUser = useAuthStore(s => s.user)
+  const role = authUser?.role ?? currentRole
+  const user = authUser
+    ? { name: authUser.name, email: authUser.email, initials: initialsOf(authUser.name) }
+    : { name: 'Usuario DG&A', email: '', initials: 'DG' }
   const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -42,9 +43,11 @@ export function Header({ title }: { title?: string }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  function handleLogout() {
+  async function handleLogout() {
     setMenuOpen(false)
+    try { await fetch('/api/auth/logout', { method: 'POST' }) } catch { /* noop */ }
     router.push('/login')
+    router.refresh()
   }
 
   return (
@@ -71,25 +74,6 @@ export function Header({ title }: { title?: string }) {
 
       {/* Right side */}
       <div className="flex items-center gap-2 sm:gap-3 ml-auto min-w-0">
-        {/* Demo Role Switcher (con scroll horizontal en pantallas estrechas) */}
-        <div className="flex items-center gap-0.5 bg-muted rounded-lg p-1 overflow-x-auto max-w-[55vw] sm:max-w-none">
-          <span className="hidden sm:inline text-[10px] text-muted-foreground px-2 font-medium whitespace-nowrap">Demo:</span>
-          {ROLES.map(role => (
-            <button
-              key={role}
-              type="button"
-              onClick={() => setRole(role)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${
-                currentRole === role
-                  ? 'bg-brand-navy text-white shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-background'
-              }`}
-            >
-              {ROLE_LABELS[role]}
-            </button>
-          ))}
-        </div>
-
         {/* Notifications */}
         <NotificationsBell />
 
@@ -107,7 +91,7 @@ export function Header({ title }: { title?: string }) {
             </Avatar>
             <div className="hidden sm:block text-left">
               <p className="text-xs font-semibold text-foreground leading-none">{user.name}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{ROLE_LABELS[currentRole]}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{ROLE_LABELS[role]}</p>
             </div>
             <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
           </button>
@@ -119,7 +103,7 @@ export function Header({ title }: { title?: string }) {
                 <p className="text-xs font-semibold text-foreground">{user.name}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{user.email}</p>
                 <span className="inline-flex mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-brand-navy/10 text-brand-navy">
-                  {ROLE_LABELS[currentRole]}
+                  {ROLE_LABELS[role]}
                 </span>
               </div>
               {/* Mi perfil — todos los roles */}
@@ -132,7 +116,7 @@ export function Header({ title }: { title?: string }) {
                 Mi perfil
               </button>
               {/* Configuración — solo socio y admin */}
-              {(currentRole === 'socio' || currentRole === 'admin') && (
+              {(role === 'socio' || role === 'admin') && (
                 <button
                   type="button"
                   onClick={() => { setMenuOpen(false); router.push('/configuracion') }}

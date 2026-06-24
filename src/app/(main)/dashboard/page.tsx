@@ -1,40 +1,24 @@
 "use client"
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
-  Bell, FileText, CheckSquare, Scale, Clock, TrendingUp, TrendingDown,
+  Bell, FileText, CheckSquare, Scale, Clock, TrendingUp,
   AlertTriangle, ChevronRight, BookOpen, Users, ArrowUpRight
 } from 'lucide-react'
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Area, AreaChart
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SeverityBadge } from '@/components/shared/severity-badge'
 import { AlertStatusBadge } from '@/components/shared/alert-status-badge'
 import { useData } from '@/shared/context/data-context'
 
-const MONTHLY_ACTIVITY = [
-  { mes: 'Ene', alertas: 8, notas: 3, contratos: 5 },
-  { mes: 'Feb', alertas: 12, notas: 5, contratos: 7 },
-  { mes: 'Mar', alertas: 7, notas: 8, contratos: 4 },
-  { mes: 'Abr', alertas: 15, notas: 6, contratos: 9 },
-  { mes: 'May', alertas: 11, notas: 9, contratos: 6 },
-  { mes: 'Jun', alertas: 9, notas: 11, contratos: 8 },
-  { mes: 'Jul', alertas: 14, notas: 7, contratos: 11 },
-]
-
-const HOURS_TREND = [
-  { sem: 'S1', horas: 12 },
-  { sem: 'S2', horas: 18 },
-  { sem: 'S3', horas: 15 },
-  { sem: 'S4', horas: 24 },
-  { sem: 'S5', horas: 21 },
-  { sem: 'S6', horas: 28 },
-  { sem: 'S7', horas: 32 },
-]
+// Factores honestos de horas ahorradas por artefacto generado con IA.
+const HORAS_POR_NOTA = 2          // borrador de Legal Note revisado
+const HORAS_POR_CONTRATO = 3      // análisis de contrato
 
 const RISK_COLORS: Record<string, string> = {
   'crítico': 'bg-red-500',
@@ -42,27 +26,18 @@ const RISK_COLORS: Record<string, string> = {
   'medio': 'bg-yellow-500',
   'bajo': 'bg-green-500',
 }
-
-const AREA_RISK: Record<string, { level: string; count: number }> = {
-  'Laboral': { level: 'alto', count: 3 },
-  'Compliance': { level: 'crítico', count: 2 },
-  'Corporativo': { level: 'medio', count: 1 },
-  'Datos Personales': { level: 'alto', count: 2 },
-  'Cont. Pública': { level: 'medio', count: 1 },
-  'Inmobiliario': { level: 'bajo', count: 0 },
-}
+const RISK_ORDER: Record<string, number> = { 'crítico': 4, 'alto': 3, 'medio': 2, 'bajo': 1 }
 
 interface KpiCardProps {
   label: string
   value: string
-  trend?: { value: string; up: boolean }
   sub: string
   icon: React.ReactNode
   iconBg: string
   accent?: boolean
 }
 
-function KpiCard({ label, value, trend, sub, icon, iconBg, accent }: KpiCardProps) {
+function KpiCard({ label, value, sub, icon, iconBg, accent }: KpiCardProps) {
   return (
     <Card className={accent ? 'border-brand-gold/30 bg-gradient-to-br from-brand-gold/5 to-brand-gold/10' : ''}>
       <CardContent className="p-5">
@@ -70,12 +45,6 @@ function KpiCard({ label, value, trend, sub, icon, iconBg, accent }: KpiCardProp
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
             {icon}
           </div>
-          {trend && (
-            <div className={`flex items-center gap-1 text-xs font-semibold ${trend.up ? 'text-green-600' : 'text-red-500'}`}>
-              {trend.up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              {trend.value}
-            </div>
-          )}
         </div>
         <p className={`text-3xl font-bold tracking-tight ${accent ? 'text-brand-gold' : 'text-foreground'}`}>{value}</p>
         <p className="text-xs font-medium text-foreground mt-1">{label}</p>
@@ -86,21 +55,81 @@ function KpiCard({ label, value, trend, sub, icon, iconBg, accent }: KpiCardProp
 }
 
 export default function DashboardPage() {
-  const { alerts, matters, clients, legalNotes, documents } = useData()
+  const { alerts, matters, clients, legalNotes, documents, contractReviews, practiceAreas } = useData()
+  const [today, setToday] = useState('')
+  const [now, setNow] = useState<number | null>(null)
+  useEffect(() => {
+    const n = new Date()
+    setToday((d => d.charAt(0).toUpperCase() + d.slice(1))(n.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })))
+    setNow(n.getTime())
+  }, [])
 
   const recentAlerts = alerts.slice(0, 5)
   const upcomingDeadlines = matters.filter(m => m.next_deadline).sort((a, b) =>
     new Date(a.next_deadline!).getTime() - new Date(b.next_deadline!).getTime()
   ).slice(0, 4)
 
+  const horasEstimadas = legalNotes.length * HORAS_POR_NOTA + contractReviews.length * HORAS_POR_CONTRATO
+
   const dashboardStats = {
     alertas_nuevas: alerts.filter(a => a.status === 'nueva').length,
     asuntos_activos: matters.filter(m => m.status === 'activo').length,
-    horas_ahorradas_estimadas: (alerts.length + matters.length + legalNotes.length) * 2,
+    horas_ahorradas_estimadas: horasEstimadas,
     documentos_pendientes: documents.filter(d => d.status === 'pendiente').length,
     aprobaciones_pendientes: legalNotes.filter(n => n.status === 'en_revisión').length,
     notas_borrador: legalNotes.filter(n => n.status === 'borrador_ia').length,
   }
+
+  // ── Actividad mensual (últimos 6 meses, derivada de created_at) ──
+  const monthlyActivity = useMemo(() => {
+    const base = now ?? Date.now()
+    const ref = new Date(base)
+    const meses = Array.from({ length: 6 }, (_, k) => {
+      const d = new Date(ref.getFullYear(), ref.getMonth() - (5 - k), 1)
+      return { key: `${d.getFullYear()}-${d.getMonth()}`, mes: d.toLocaleDateString('es-CO', { month: 'short' }).replace('.', ''), alertas: 0, notas: 0, contratos: 0 }
+    })
+    const idx = new Map(meses.map((m, i) => [m.key, i]))
+    const bump = (dateStr: string | undefined, field: 'alertas' | 'notas' | 'contratos') => {
+      if (!dateStr) return
+      const d = new Date(dateStr)
+      const i = idx.get(`${d.getFullYear()}-${d.getMonth()}`)
+      if (i !== undefined) meses[i][field]++
+    }
+    alerts.forEach(a => bump(a.created_at ?? a.published_at, 'alertas'))
+    legalNotes.forEach(n => bump(n.created_at, 'notas'))
+    contractReviews.forEach(c => bump(c.created_at, 'contratos'))
+    return meses
+  }, [alerts, legalNotes, contractReviews, now])
+
+  // ── Riesgo por área (asuntos activos por área + mayor riesgo de cliente) ──
+  const areaRisk = useMemo(() => {
+    const map = new Map<string, { level: string; count: number }>()
+    practiceAreas.forEach(pa => map.set(pa.name, { level: 'bajo', count: 0 }))
+    matters.filter(m => m.status === 'activo').forEach(m => {
+      const area = m.practice_area?.name
+      if (!area) return
+      const entry = map.get(area) ?? { level: 'bajo', count: 0 }
+      entry.count++
+      const r = m.client?.risk_level
+      if (r && (RISK_ORDER[r] ?? 0) > (RISK_ORDER[entry.level] ?? 0)) entry.level = r
+      map.set(area, entry)
+    })
+    return Array.from(map.entries()).map(([area, info]) => ({ area, ...info }))
+  }, [practiceAreas, matters])
+
+  // ── Horas ahorradas por semana (últimas 7, estimadas de artefactos IA) ──
+  const hoursTrend = useMemo(() => {
+    const base = now ?? Date.now()
+    const semanas = Array.from({ length: 7 }, (_, k) => ({ sem: `S${k + 1}`, horas: 0 }))
+    const addWeek = (dateStr: string | undefined, hrs: number) => {
+      if (!dateStr) return
+      const wk = Math.floor((base - new Date(dateStr).getTime()) / (7 * 86400000))
+      if (wk >= 0 && wk < 7) semanas[6 - wk].horas += hrs
+    }
+    legalNotes.forEach(n => addWeek(n.created_at, HORAS_POR_NOTA))
+    contractReviews.forEach(c => addWeek(c.created_at, HORAS_POR_CONTRATO))
+    return semanas
+  }, [legalNotes, contractReviews, now])
 
   return (
     <div className="flex flex-col lg:flex-row gap-6">
@@ -110,7 +139,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold font-playfair text-foreground">Panel ejecutivo</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Martes, 13 de mayo de 2026</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{today}</p>
           </div>
           <Button variant="outline" size="sm" asChild>
             <Link href="/reportes">
@@ -125,7 +154,6 @@ export default function DashboardPage() {
           <KpiCard
             label="Alertas nuevas"
             value={String(dashboardStats.alertas_nuevas)}
-            trend={{ value: '+12%', up: false }}
             sub="Requieren análisis"
             icon={<Bell className="w-5 h-5 text-red-600" />}
             iconBg="bg-red-50"
@@ -133,7 +161,6 @@ export default function DashboardPage() {
           <KpiCard
             label="Asuntos activos"
             value={String(dashboardStats.asuntos_activos)}
-            trend={{ value: '+3%', up: true }}
             sub="En trámite"
             icon={<Scale className="w-5 h-5 text-brand-navy" />}
             iconBg="bg-brand-navy/8"
@@ -141,8 +168,7 @@ export default function DashboardPage() {
           <KpiCard
             label="Horas ahorradas"
             value={`${dashboardStats.horas_ahorradas_estimadas}h`}
-            trend={{ value: '+18%', up: true }}
-            sub="Estimado con IA"
+            sub="Estimado desde actividad IA"
             icon={<Clock className="w-5 h-5 text-brand-gold" />}
             iconBg="bg-brand-gold/15"
             accent
@@ -167,7 +193,6 @@ export default function DashboardPage() {
           <KpiCard
             label="Notes IA borrador"
             value={String(dashboardStats.notas_borrador)}
-            trend={{ value: '+5', up: true }}
             sub="Generados por IA"
             icon={<BookOpen className="w-5 h-5 text-purple-600" />}
             iconBg="bg-purple-50"
@@ -186,7 +211,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="pt-2 pb-4">
             <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={MONTHLY_ACTIVITY} barSize={8} barGap={3}>
+              <BarChart data={monthlyActivity} barSize={8} barGap={3}>
                 <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(214 20% 90%)" />
                 <XAxis dataKey="mes" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={28} />
@@ -253,11 +278,11 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="pt-0 pb-3">
             <p className="text-2xl font-bold text-foreground mb-1">{dashboardStats.horas_ahorradas_estimadas}h</p>
-            <p className="text-xs text-green-600 font-semibold flex items-center gap-1 mb-3">
-              <TrendingUp className="w-3.5 h-3.5" /> +18% vs mes anterior
+            <p className="text-[11px] text-muted-foreground mb-3">
+              Estimado: {HORAS_POR_NOTA}h/nota IA · {HORAS_POR_CONTRATO}h/contrato
             </p>
             <ResponsiveContainer width="100%" height={80}>
-              <AreaChart data={HOURS_TREND}>
+              <AreaChart data={hoursTrend}>
                 <defs>
                   <linearGradient id="hoursGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#B8962E" stopOpacity={0.25} />
@@ -278,13 +303,13 @@ export default function DashboardPage() {
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Riesgo por área</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1 pt-0">
-            {Object.entries(AREA_RISK).map(([area, info]) => (
-              <div key={area} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
-                <div className="flex items-center gap-2">
+            {areaRisk.map(info => (
+              <div key={info.area} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${RISK_COLORS[info.level]}`} />
-                  <span className="text-xs font-medium">{area}</span>
+                  <span className="text-xs font-medium truncate">{info.area}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   {info.count > 0 && (
                     <span className="text-[10px] text-muted-foreground">{info.count}</span>
                   )}

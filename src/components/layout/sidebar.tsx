@@ -5,43 +5,72 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, MessageSquare, Bell, FileText, FileCheck,
   Search, Shield, Users, Briefcase, Settings, Scale,
-  BookOpen, BarChart3
+  BookOpen, BarChart3, Gavel, Clock, Receipt, PieChart, Repeat, Sparkles
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRoleStore } from '@/shared/stores/role-store'
 import { useUIStore } from '@/shared/stores/ui-store'
+import { useAuthStore } from '@/shared/stores/auth-store'
 import type { UserRole } from '@/shared/types'
 
-const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard, roles: ['socio', 'asociado', 'admin'] as UserRole[] },
-  { href: '/copiloto', label: 'Copiloto DG&A', icon: MessageSquare, roles: ['socio', 'asociado', 'admin'] as UserRole[] },
-  { href: '/monitor', label: 'Monitor normativo', icon: Bell, roles: ['socio', 'asociado', 'admin'] as UserRole[] },
-  { href: '/legal-notes', label: 'Legal Notes', icon: BookOpen, roles: ['socio', 'asociado', 'admin'] as UserRole[] },
-  { href: '/contratos', label: 'Contratos', icon: FileText, roles: ['socio', 'asociado', 'admin'] as UserRole[] },
-  { href: '/due-diligence', label: 'Due Diligence', icon: Search, roles: ['socio', 'asociado', 'admin'] as UserRole[] },
-  { href: '/compliance', label: 'Compliance', icon: Shield, roles: ['socio', 'asociado', 'admin'] as UserRole[] },
-  { href: '/laboral', label: 'Laboral / RR.HH.', icon: Users, roles: ['socio', 'asociado', 'admin'] as UserRole[] },
-  { href: '/litigios', label: 'Litigios', icon: Scale, roles: ['socio', 'asociado', 'admin'] as UserRole[] },
-  { href: '/clientes', label: 'Clientes', icon: Briefcase, roles: ['socio', 'asociado', 'admin'] as UserRole[] },
-  { href: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['socio', 'admin'] as UserRole[] },
-  { href: '/configuracion', label: 'Configuración', icon: Settings, roles: ['socio', 'admin'] as UserRole[] },
-  { href: '/portal', label: 'Mi Portal', icon: LayoutDashboard, roles: ['cliente'] as UserRole[] },
-  { href: '/portal/asuntos', label: 'Mis Asuntos', icon: Scale, roles: ['cliente'] as UserRole[] },
-  { href: '/portal/documentos', label: 'Mis Documentos', icon: FileCheck, roles: ['cliente'] as UserRole[] },
-  { href: '/portal/alertas', label: 'Mis Alertas', icon: Bell, roles: ['cliente'] as UserRole[] },
+const ROLE_LABELS: Record<UserRole, string> = { socio: 'Socio', asociado: 'Asociado', cliente: 'Cliente', admin: 'Administrador' }
+
+type NavItem = {
+  href: string; label: string; icon: typeof LayoutDashboard; roles: UserRole[]
+  dgatime?: boolean; managerOnly?: boolean
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard', label: 'Inicio', icon: LayoutDashboard, roles: ['socio', 'asociado', 'admin'] },
+  { href: '/copiloto', label: 'DG&A IA', icon: MessageSquare, roles: ['socio', 'asociado', 'admin'] },
+  { href: '/monitor', label: 'Monitor normativo', icon: Bell, roles: ['socio', 'asociado', 'admin'] },
+  { href: '/legal-notes', label: 'Legal Notes', icon: BookOpen, roles: ['socio', 'asociado', 'admin'] },
+  { href: '/contratos', label: 'Contratos', icon: FileText, roles: ['socio', 'asociado', 'admin'] },
+  { href: '/due-diligence', label: 'Due Diligence', icon: Search, roles: ['socio', 'asociado', 'admin'] },
+  { href: '/compliance', label: 'Compliance', icon: Shield, roles: ['socio', 'asociado', 'admin'] },
+  { href: '/laboral', label: 'Laboral / RR.HH.', icon: Users, roles: ['socio', 'asociado', 'admin'] },
+  { href: '/litigios', label: 'Litigios', icon: Scale, roles: ['socio', 'asociado', 'admin'] },
+  { href: '/rama-judicial', label: 'Rama Judicial', icon: Gavel, roles: ['socio', 'asociado', 'admin'] },
+  { href: '/clientes', label: 'Clientes', icon: Briefcase, roles: ['socio', 'asociado', 'admin'] },
+  // ── DGA-Time (visible solo si el usuario tiene el módulo habilitado) ──
+  { href: '/dgatime/captura', label: 'Captura inteligente', icon: Sparkles, roles: ['socio', 'asociado', 'admin'], dgatime: true },
+  { href: '/dgatime', label: 'Resumen', icon: PieChart, roles: ['socio', 'asociado', 'admin'], dgatime: true },
+  { href: '/dgatime/horas', label: 'Registro de horas', icon: Clock, roles: ['socio', 'asociado', 'admin'], dgatime: true },
+  { href: '/dgatime/informes', label: 'Informes', icon: FileText, roles: ['socio', 'asociado', 'admin'], dgatime: true },
+  { href: '/dgatime/facturacion', label: 'Facturación', icon: Receipt, roles: ['socio', 'admin'], dgatime: true, managerOnly: true },
+  { href: '/dgatime/igualas', label: 'Igualas', icon: Repeat, roles: ['socio', 'admin'], dgatime: true, managerOnly: true },
+  { href: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['socio', 'admin'] },
+  { href: '/configuracion', label: 'Configuración', icon: Settings, roles: ['socio', 'admin'] },
+  { href: '/portal', label: 'Mi Portal', icon: LayoutDashboard, roles: ['cliente'] },
+  { href: '/portal/asuntos', label: 'Mis Asuntos', icon: Scale, roles: ['cliente'] },
+  { href: '/portal/documentos', label: 'Mis Documentos', icon: FileCheck, roles: ['cliente'] },
+  { href: '/portal/alertas', label: 'Mis Alertas', icon: Bell, roles: ['cliente'] },
 ]
 
 const SECTION_DIVIDERS: Record<string, string> = {
   '/clientes': 'Gestión',
   '/copiloto': 'Herramientas IA',
   '/contratos': 'Práctica legal',
+  '/dgatime/captura': 'DGA-Time',
+  '/reportes': 'Administración',
 }
 
 export function Sidebar() {
   const pathname = usePathname()
   const { currentRole } = useRoleStore()
   const { mobileNavOpen, setMobileNav } = useUIStore()
-  const visibleItems = NAV_ITEMS.filter(item => item.roles.includes(currentRole))
+  const authUser = useAuthStore(s => s.user)
+  const isManager = authUser?.role === 'socio' || authUser?.role === 'admin'
+  const dgatimeAccess = isManager || authUser?.dgatime_enabled === true
+  const visibleItems = NAV_ITEMS.filter(item => {
+    if (!item.roles.includes(currentRole)) return false
+    if (item.dgatime && !dgatimeAccess) return false
+    if (item.managerOnly && !isManager) return false
+    return true
+  })
+  const footerName = authUser?.name ?? 'Usuario DG&A'
+  const footerRole = ROLE_LABELS[authUser?.role ?? currentRole]
+  const footerInitials = ((footerName.trim().split(/\s+/)[0]?.[0] ?? '') + (footerName.trim().split(/\s+/)[1]?.[0] ?? '')).toUpperCase() || 'DG'
 
   return (
     <>
@@ -84,7 +113,7 @@ export function Sidebar() {
         {visibleItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href ||
-            (item.href !== '/dashboard' && item.href !== '/portal' && pathname.startsWith(item.href))
+            (item.href !== '/dashboard' && item.href !== '/portal' && item.href !== '/dgatime' && pathname.startsWith(item.href))
           const showDivider = SECTION_DIVIDERS[item.href]
 
           return (
@@ -127,11 +156,11 @@ export function Sidebar() {
       <div className="px-4 py-4 border-t border-white/[0.08]">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 bg-brand-gold/40">
-            CG
+            {footerInitials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-white truncate leading-none">Carlos Gómez V.</p>
-            <p className="text-[10px] mt-0.5 text-white/40">Socio DG&A</p>
+            <p className="text-xs font-medium text-white truncate leading-none">{footerName}</p>
+            <p className="text-[10px] mt-0.5 text-white/40">{footerRole} · DG&A</p>
           </div>
         </div>
       </div>

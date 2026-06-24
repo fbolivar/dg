@@ -18,7 +18,6 @@ type Notification = {
 }
 
 const CLIENT_ID = 'cl1'
-const NOW = Date.now()
 const DAYS7 = 7 * 86400000
 
 function useNotifications(role: UserRole): Notification[] {
@@ -26,6 +25,7 @@ function useNotifications(role: UserRole): Notification[] {
 
   return useMemo(() => {
     const notifs: Notification[] = []
+    const NOW = Date.now() // se recalcula cuando cambian los datos (no congelado al cargar el módulo)
 
     if (role === 'socio' || role === 'admin') {
       // Alertas críticas sin archivar

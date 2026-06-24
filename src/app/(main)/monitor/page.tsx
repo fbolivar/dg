@@ -42,7 +42,7 @@ export default function MonitorPage() {
   const { alerts: dbAlerts, clients, practiceAreas, users } = useData()
   const [alerts, setAlerts] = useState<Alert[]>([])
 
-  useEffect(() => { if (dbAlerts.length > 0) setAlerts(dbAlerts.map(a => ({ ...a }))) }, [dbAlerts])
+  useEffect(() => { setAlerts(dbAlerts.map(a => ({ ...a }))) }, [dbAlerts])
   const [selected, setSelected] = useState<Alert | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Alert | null>(null)

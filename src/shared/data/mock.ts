@@ -1,7 +1,8 @@
 import type {
   Client, User, PracticeArea, Alert, LegalNote, Document,
   ContractReview, DueDiligenceProject, DueDiligenceFinding,
-  Matter, MatterEvent, ComplianceDiagnostic, HRTicket
+  Matter, MatterEvent, ComplianceDiagnostic, HRTicket,
+  JudicialProcess, JudicialActuacion
 } from '@/shared/types'
 
 export const PRACTICE_AREAS: PracticeArea[] = [
@@ -171,6 +172,99 @@ export const HR_TICKETS: HRTicket[] = [
   { id: 'hr1', client_id: 'cl1', client: CLIENTS[0], topic: 'Terminación de contrato', question: '¿Podemos terminar el contrato a término indefinido de un trabajador con más de 10 años de antigüedad que ha tenido bajo rendimiento crónico?', ai_response: 'Para terminar un contrato con justa causa por bajo rendimiento, es necesario seguir un proceso disciplinario formal que incluya: (1) citación a descargos, (2) presentación de cargos con evidencias documentadas, (3) valoración de descargos, (4) decisión sancionatoria con recursos. Dado que el trabajador tiene más de 10 años de antigüedad, el proceso debe ser especialmente riguroso...', status: 'respondido', sensitivity_flag: true, assigned_to: 'u2', created_at: '2026-05-09' },
   { id: 'hr2', client_id: 'cl5', client: CLIENTS[4], topic: 'Incapacidades médicas', question: '¿Cuál es el procedimiento para manejar un trabajador con incapacidades médicas repetitivas que superan los 180 días?', ai_response: 'Cuando las incapacidades médicas superan 180 días continuos o discontinuos, la normativa colombiana establece...', status: 'abierto', sensitivity_flag: false, assigned_to: 'u3', created_at: '2026-05-11' },
   { id: 'hr3', client_id: 'cl2', client: CLIENTS[1], topic: 'Negociación colectiva', question: '¿Tenemos obligación de negociar un pliego de peticiones presentado por un sindicato que representa menos del 10% de la plantilla?', status: 'en_revisión', sensitivity_flag: true, assigned_to: 'u1', created_at: '2026-05-12' },
+]
+
+// ─── Rama Judicial: procesos en seguimiento ──────────────────────────────────
+export const JUDICIAL_PROCESSES: JudicialProcess[] = [
+  {
+    id: 'jp1', numero_radicacion: '11001310500320240015623', client_id: 'cl1', client: CLIENTS[0], matter_id: 'm1',
+    despacho: 'Juzgado 3 Laboral del Circuito de Bogotá', departamento: 'Bogotá D.C.', tipo_proceso: 'Ordinario Laboral',
+    clase_proceso: 'Despido sin justa causa', ponente: 'Dra. Patricia León Mora',
+    demandante: 'Jorge Ospina Reyes', demandado: 'Andina Retail S.A.S.',
+    fecha_radicacion: '2025-11-10', ultima_actuacion: 'Fija fecha audiencia de trámite y juzgamiento (Art. 80 CPTSS)',
+    fecha_ultima_actuacion: '2026-05-10', proxima_audiencia: '2026-06-15', status: 'activo',
+    sync_status: 'sincronizado', last_sync: '2026-05-13T03:00:00Z', actuaciones_count: 6, new_actuaciones: 1,
+  },
+  {
+    id: 'jp2', numero_radicacion: '11001400300820230098745', client_id: 'cl2', client: CLIENTS[1],
+    despacho: 'Juzgado 8 Civil del Circuito de Bogotá', departamento: 'Bogotá D.C.', tipo_proceso: 'Ejecutivo Singular',
+    clase_proceso: 'Cobro de obligación dineraria', ponente: 'Dr. Andrés Felipe Cárdenas',
+    demandante: 'BioNova Colombia S.A.', demandado: 'Distribuidora Farmacéutica del Sur Ltda.',
+    fecha_radicacion: '2023-08-22', ultima_actuacion: 'Auto ordena seguir adelante con la ejecución',
+    fecha_ultima_actuacion: '2026-04-28', status: 'activo',
+    sync_status: 'sincronizado', last_sync: '2026-05-13T03:00:00Z', actuaciones_count: 7, new_actuaciones: 0,
+  },
+  {
+    id: 'jp3', numero_radicacion: '25000233600020240054312', client_id: 'cl3', client: CLIENTS[2],
+    despacho: 'Tribunal Administrativo de Cundinamarca — Sección Tercera', departamento: 'Cundinamarca', tipo_proceso: 'Nulidad y Restablecimiento del Derecho',
+    clase_proceso: 'Contractual — controversia contrato estatal', ponente: 'Mg. Carlos Eduardo Rincón',
+    demandante: 'Infraestructura Capital S.A.S.', demandado: 'Instituto de Desarrollo Urbano — IDU',
+    fecha_radicacion: '2024-03-15', ultima_actuacion: 'Auto admite demanda y ordena notificación',
+    fecha_ultima_actuacion: '2026-05-12', proxima_audiencia: '2026-07-02', status: 'activo',
+    sync_status: 'sincronizado', last_sync: '2026-05-13T03:00:00Z', actuaciones_count: 5, new_actuaciones: 2,
+  },
+  {
+    id: 'jp4', numero_radicacion: '76001310500220240003311', client_id: 'cl5', client: CLIENTS[4], matter_id: 'm3',
+    despacho: 'Juzgado 2 Laboral del Circuito de Cali', departamento: 'Valle del Cauca', tipo_proceso: 'Ordinario Laboral',
+    clase_proceso: 'Reintegro y acreencias laborales', ponente: 'Dra. Mónica Salazar Gil',
+    demandante: 'Sindicato de Trabajadores SINORTE', demandado: 'Servicios Industriales del Norte S.A.S.',
+    fecha_radicacion: '2024-02-01', ultima_actuacion: 'Traslado para alegatos de conclusión',
+    fecha_ultima_actuacion: '2026-05-02', status: 'activo',
+    sync_status: 'sincronizado', last_sync: '2026-05-13T03:00:00Z', actuaciones_count: 6, new_actuaciones: 0,
+  },
+  {
+    id: 'jp5', numero_radicacion: '11001310301520230077001', client_id: 'cl4', client: CLIENTS[3],
+    despacho: 'Juzgado 15 Civil del Circuito de Bogotá', departamento: 'Bogotá D.C.', tipo_proceso: 'Verbal',
+    clase_proceso: 'Incumplimiento contractual — franquicia', ponente: 'Dr. Germán Pardo Ruiz',
+    demandante: 'Global Franchise Group Colombia', demandado: 'Inversiones Gastronómicas Andinas S.A.S.',
+    fecha_radicacion: '2023-09-18', ultima_actuacion: 'Sentencia de primera instancia — favorable parcialmente',
+    fecha_ultima_actuacion: '2026-03-20', status: 'terminado',
+    sync_status: 'sincronizado', last_sync: '2026-05-13T03:00:00Z', actuaciones_count: 8, new_actuaciones: 0,
+  },
+]
+
+export const JUDICIAL_ACTUACIONES: JudicialActuacion[] = [
+  // jp1 — Laboral Ospina vs Andina Retail
+  { id: 'act1', process_id: 'jp1', fecha: '2026-05-10', actuacion: 'Fija fecha audiencia de trámite y juzgamiento', anotacion: 'Se fija audiencia para el 15 de junio de 2026, 9:00 a.m. Sala 3.', is_new: true },
+  { id: 'act2', process_id: 'jp1', fecha: '2026-03-20', actuacion: 'Audiencia de conciliación — fallida', anotacion: 'No hubo ánimo conciliatorio. El proceso continúa su curso.' },
+  { id: 'act3', process_id: 'jp1', fecha: '2026-01-15', actuacion: 'Contestación de la demanda', anotacion: 'La parte demandada contesta y propone excepciones de mérito.' },
+  { id: 'act4', process_id: 'jp1', fecha: '2025-12-05', actuacion: 'Notificación por estado al demandado', inicia_termino: '2025-12-06', finaliza_termino: '2026-01-15' },
+  { id: 'act5', process_id: 'jp1', fecha: '2025-11-18', actuacion: 'Auto admite la demanda', anotacion: 'Se admite la demanda y se ordena correr traslado por 10 días.' },
+  { id: 'act6', process_id: 'jp1', fecha: '2025-11-10', actuacion: 'Radicación de la demanda' },
+
+  // jp2 — Ejecutivo BioNova
+  { id: 'act7', process_id: 'jp2', fecha: '2026-04-28', actuacion: 'Auto ordena seguir adelante con la ejecución', anotacion: 'Se ordena seguir adelante con la ejecución y practicar liquidación del crédito.' },
+  { id: 'act8', process_id: 'jp2', fecha: '2026-02-10', actuacion: 'Sentencia que ordena llevar adelante la ejecución' },
+  { id: 'act9', process_id: 'jp2', fecha: '2025-10-04', actuacion: 'Excepciones propuestas por el ejecutado' },
+  { id: 'act10', process_id: 'jp2', fecha: '2024-06-20', actuacion: 'Mandamiento de pago', anotacion: 'Se libra mandamiento de pago por capital e intereses.' },
+  { id: 'act11', process_id: 'jp2', fecha: '2024-03-15', actuacion: 'Auto admite demanda ejecutiva' },
+  { id: 'act12', process_id: 'jp2', fecha: '2023-09-01', actuacion: 'Notificación personal al ejecutado' },
+  { id: 'act13', process_id: 'jp2', fecha: '2023-08-22', actuacion: 'Radicación de la demanda ejecutiva' },
+
+  // jp3 — Contencioso Infraestructura Capital
+  { id: 'act14', process_id: 'jp3', fecha: '2026-05-12', actuacion: 'Auto admite demanda y ordena notificación', anotacion: 'Se admite la demanda. Notifíquese al IDU y a la Agencia Nacional de Defensa Jurídica del Estado.', is_new: true },
+  { id: 'act15', process_id: 'jp3', fecha: '2026-05-08', actuacion: 'Fijación en lista — reparto', anotacion: 'Proceso repartido al Despacho del Mg. Carlos Eduardo Rincón.', is_new: true },
+  { id: 'act16', process_id: 'jp3', fecha: '2024-04-02', actuacion: 'Subsanación de la demanda' },
+  { id: 'act17', process_id: 'jp3', fecha: '2024-03-20', actuacion: 'Auto inadmite — requiere subsanar' },
+  { id: 'act18', process_id: 'jp3', fecha: '2024-03-15', actuacion: 'Radicación de la demanda' },
+
+  // jp4 — Laboral SINORTE
+  { id: 'act19', process_id: 'jp4', fecha: '2026-05-02', actuacion: 'Traslado para alegatos de conclusión', inicia_termino: '2026-05-03', finaliza_termino: '2026-05-17' },
+  { id: 'act20', process_id: 'jp4', fecha: '2026-03-10', actuacion: 'Audiencia de juzgamiento — práctica de pruebas' },
+  { id: 'act21', process_id: 'jp4', fecha: '2025-11-22', actuacion: 'Auto decreta pruebas' },
+  { id: 'act22', process_id: 'jp4', fecha: '2025-08-15', actuacion: 'Audiencia inicial (Art. 77 CPTSS)' },
+  { id: 'act23', process_id: 'jp4', fecha: '2024-04-10', actuacion: 'Contestación de la demanda' },
+  { id: 'act24', process_id: 'jp4', fecha: '2024-02-01', actuacion: 'Radicación de la demanda' },
+
+  // jp5 — Verbal Global Franchise (terminado)
+  { id: 'act25', process_id: 'jp5', fecha: '2026-03-20', actuacion: 'Sentencia de primera instancia', anotacion: 'Se accede parcialmente a las pretensiones. Se condena en costas a la demandada.' },
+  { id: 'act26', process_id: 'jp5', fecha: '2025-12-01', actuacion: 'Alegatos de conclusión' },
+  { id: 'act27', process_id: 'jp5', fecha: '2025-09-10', actuacion: 'Audiencia de instrucción y juzgamiento' },
+  { id: 'act28', process_id: 'jp5', fecha: '2025-05-18', actuacion: 'Audiencia inicial (Art. 372 CGP)' },
+  { id: 'act29', process_id: 'jp5', fecha: '2024-10-22', actuacion: 'Auto decreta pruebas' },
+  { id: 'act30', process_id: 'jp5', fecha: '2024-04-05', actuacion: 'Contestación de la demanda' },
+  { id: 'act31', process_id: 'jp5', fecha: '2023-11-12', actuacion: 'Auto admite demanda' },
+  { id: 'act32', process_id: 'jp5', fecha: '2023-09-18', actuacion: 'Radicación de la demanda' },
 ]
 
 export const DASHBOARD_STATS = {

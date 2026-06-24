@@ -41,7 +41,7 @@ export default function ClientesPage() {
   const { clients: dbClients, matters, alerts, documents, complianceDiagnostics } = useData()
   const [clients, setClients] = useState<Client[]>([])
 
-  useEffect(() => { if (dbClients.length > 0) setClients(dbClients.map(c => ({ ...c }))) }, [dbClients])
+  useEffect(() => { setClients(dbClients.map(c => ({ ...c }))) }, [dbClients])
   const [selected, setSelected] = useState<Client | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Client | null>(null)

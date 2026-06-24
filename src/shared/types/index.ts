@@ -5,7 +5,17 @@ export type AlertStatus = 'nueva' | 'en_análisis' | 'enviada_cliente' | 'archiv
 export type DocumentStatus = 'pendiente' | 'en_revisión' | 'revisado' | 'aprobado' | 'archivado'
 export type NoteStatus = 'borrador_ia' | 'en_revisión' | 'aprobado' | 'publicado' | 'rechazado'
 export type MatterStatus = 'activo' | 'en_pausa' | 'cerrado' | 'archivado'
+export type MatterOutcome = 'en_curso' | 'ganado' | 'perdido' | 'desistido'
 export type Severity = 'bajo' | 'medio' | 'alto' | 'crítico'
+
+// ─── DGA-Time ────────────────────────────────────────────────────────────────
+export type DgaCurrency = 'COP' | 'USD'
+export type TimeEntryStatus = 'borrador' | 'aprobado' | 'rechazado' | 'facturado'
+export type InvoiceType = 'horas' | 'fijo' | 'hito' | 'iguala' | 'recurrente'
+export type InvoiceStatus = 'borrador' | 'enviada' | 'pagada' | 'anulada'
+export type RecurringFrequency = 'mensual' | 'trimestral' | 'anual'
+export type CaptureStatus = 'sugerida' | 'aprobada' | 'descartada'
+export type CaptureConfidence = 'alto' | 'medio' | 'bajo'
 
 export interface Client {
   id: string
@@ -30,6 +40,20 @@ export interface User {
   avatar_url?: string
   is_active: boolean
   created_at: string
+  dgatime_enabled?: boolean
+  hourly_rate?: number
+  cost_rate?: number
+  rate_currency?: DgaCurrency
+}
+
+// Usuario de sesión (autenticación local)
+export interface SessionUser {
+  id: string
+  email: string
+  name: string
+  role: UserRole
+  client_id?: string
+  dgatime_enabled?: boolean
 }
 
 export interface PracticeArea {
@@ -170,6 +194,13 @@ export interface Matter {
   status: MatterStatus
   assigned_to: string
   assigned_user?: User
+  budget_amount?: number
+  budget_hours?: number
+  budget_currency?: DgaCurrency
+  deadlines_total?: number
+  deadlines_ontime?: number
+  outcome?: MatterOutcome
+  satisfaction?: number
   created_at: string
   updated_at: string
 }
@@ -212,6 +243,45 @@ export interface HRTicket {
   created_at: string
 }
 
+// ─── Rama Judicial (integración) ─────────────────────────────────────────────
+export type ProcessStatus = 'activo' | 'terminado' | 'suspendido' | 'archivado'
+export type SyncStatus = 'sincronizado' | 'pendiente' | 'error'
+
+export interface JudicialActuacion {
+  id: string
+  process_id: string
+  fecha: string                 // fecha de la actuación
+  actuacion: string             // nombre de la actuación
+  anotacion?: string            // detalle / anotación del despacho
+  inicia_termino?: string
+  finaliza_termino?: string
+  is_new?: boolean              // detectada en el último sondeo
+}
+
+export interface JudicialProcess {
+  id: string
+  numero_radicacion: string     // 23 dígitos
+  client_id: string
+  client?: Client
+  matter_id?: string            // vínculo con asunto interno
+  despacho: string
+  departamento: string
+  tipo_proceso: string          // Ordinario Laboral, Ejecutivo, etc.
+  clase_proceso?: string
+  ponente?: string
+  demandante: string
+  demandado: string
+  fecha_radicacion: string
+  ultima_actuacion?: string
+  fecha_ultima_actuacion?: string
+  proxima_audiencia?: string
+  status: ProcessStatus
+  sync_status: SyncStatus
+  last_sync?: string
+  actuaciones_count?: number
+  new_actuaciones?: number      // novedades sin revisar
+}
+
 export interface CopilotMessage {
   role: 'user' | 'assistant'
   content: string
@@ -219,4 +289,140 @@ export interface CopilotMessage {
   confidence?: 'alto' | 'medio' | 'bajo'
   requires_review?: boolean
   timestamp: string
+}
+
+// ─── Auditoría ───────────────────────────────────────────────────────────────
+export interface AuditLogEntry {
+  id: number
+  actor_id?: string
+  actor_name: string
+  action: string
+  entity?: string
+  detail?: string
+  created_at: string
+}
+
+// ─── DGA-Time: registro de horas y facturación ───────────────────────────────
+export interface TimeEntry {
+  id: string
+  user_id: string
+  user?: User
+  client_id: string
+  client?: Client
+  matter_id?: string
+  matter?: Matter
+  date: string
+  minutes: number
+  activity: string
+  description: string
+  billable: boolean
+  rework?: boolean
+  rate: number
+  cost?: number
+  cost_amount?: number
+  currency: DgaCurrency
+  amount: number
+  status: TimeEntryStatus
+  approved_by?: string
+  approved_at?: string
+  invoice_id?: string
+  created_at: string
+}
+
+export interface InvoiceItem {
+  id: string
+  invoice_id: string
+  description: string
+  quantity: number
+  unit_rate: number
+  amount: number
+  time_entry_id?: string
+  created_at?: string
+}
+
+export interface Invoice {
+  id: string
+  number: string
+  client_id: string
+  client?: Client
+  matter_id?: string
+  type: InvoiceType
+  status: InvoiceStatus
+  currency: DgaCurrency
+  issue_date: string
+  due_date?: string
+  period_start?: string
+  period_end?: string
+  subtotal: number
+  tax_rate: number
+  tax: number
+  total: number
+  notes?: string
+  created_by?: string
+  created_at: string
+  updated_at: string
+  items?: InvoiceItem[]
+}
+
+// Estado de una integración para la UI (sin tokens).
+export interface ProviderStatus {
+  configured: boolean
+  connected: boolean
+  account_email?: string
+  last_sync?: string
+}
+
+// Conexión OAuth de un abogado (correo/calendario). Nunca expone los tokens.
+export interface UserIntegration {
+  user_id: string
+  provider: 'google' | 'microsoft'
+  account_email?: string
+  connected_at: string
+  last_sync?: string
+}
+
+// Captura inteligente: actividad detectada + sugerencia de IA (privada por abogado)
+export interface CapturedActivity {
+  id: string
+  user_id: string
+  source: string
+  source_kind: string
+  source_ref?: string
+  occurred_at: string
+  title: string
+  context: string
+  suggested_client_id?: string
+  suggested_client?: Client
+  suggested_matter_id?: string
+  suggested_matter?: Matter
+  suggested_activity: string
+  suggested_glosa: string
+  suggested_minutes: number
+  suggested_billable: boolean
+  confidence: CaptureConfidence
+  status: CaptureStatus
+  time_entry_id?: string
+  created_at: string
+}
+
+// Iguala / cobro recurrente (configuración; el cron genera las facturas)
+export interface RecurringFee {
+  id: string
+  client_id: string
+  client?: Client
+  matter_id?: string
+  type: InvoiceType
+  description: string
+  amount: number
+  currency: DgaCurrency
+  tax_rate: number
+  frequency: RecurringFrequency
+  day_of_month: number
+  start_date: string
+  end_date?: string
+  active: boolean
+  last_generated_period?: string
+  created_by?: string
+  created_at: string
+  updated_at: string
 }

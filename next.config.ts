@@ -1,16 +1,22 @@
 import type { NextConfig } from 'next'
 
-// Content-Security-Policy: bloquea la carga de scripts/recursos de orígenes no
-// autorizados (principal mitigación de XSS e inyección). Se permite 'unsafe-inline'
-// y 'unsafe-eval' porque Next.js/React inyectan estilos y scripts inline; en
-// producción endurecida se reemplaza por nonces. connect-src habilita Supabase.
+// Content-Security-Policy. En producción se elimina 'unsafe-eval' (bloquea
+// payloads basados en eval/Function). Se conserva 'unsafe-inline' en script-src
+// porque Next.js 16 (Turbopack) emite scripts inline de hidratación y NO propaga
+// el nonce a sus scripts (verificado), por lo que una CSP basada en nonce dejaría
+// la app sin hidratar. 'unsafe-eval' solo se permite en desarrollo (Turbopack/HMR).
+const IS_DEV = process.env.NODE_ENV !== 'production'
+const scriptSrc = IS_DEV
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+  : "script-src 'self' 'unsafe-inline'"
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  "connect-src 'self' https://*.supabase.co",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",

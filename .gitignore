@@ -77,3 +77,6 @@ supabase/.temp
 
 # TS build info
 tsconfig.tsbuildinfo
+
+# Respaldos de base de datos (datos de clientes — no versionar)
+supabase/backups/

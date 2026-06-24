@@ -1,33 +1,22 @@
 "use client"
 import { useState, useRef, useEffect } from 'react'
-import { Send, Loader2, BookOpen, FileText, MessageSquare, AlertTriangle, Star, Copy, CheckSquare, Check } from 'lucide-react'
+import {
+  Send, Loader2, FileText, MessageSquare, AlertTriangle, Star,
+  Copy, CheckSquare, Check, Plus, Trash2, Library
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import * as db from '@/shared/services/db'
 import { useData } from '@/shared/context/data-context'
+import { useKnowledgeStore } from '@/shared/stores/knowledge-store'
 import type { CopilotMessage } from '@/shared/types'
 
 type NoteState = { draftId?: string; status?: 'borrador_ia' | 'en_revisión'; saving?: boolean }
-
-const SUGGESTED_QUESTIONS = [
-  '¿Cuáles son las causales de terminación con justa causa bajo el CST?',
-  '¿Qué obligaciones genera el SAGRILAFT para una empresa comercial con activos superiores a 30.000 SMMLV?',
-  '¿Cuándo aplica la cláusula compromisoria en contratos estatales colombianos?',
-  '¿Qué requisitos exige la SIC para el aviso de privacidad en plataformas digitales?',
-  '¿Qué es el fuero sindical circunstancial según la jurisprudencia reciente?',
-  '¿Cuáles son los deberes del empleador en casos de incapacidad médica prolongada?',
-]
-
-const MOCK_SOURCES = [
-  'Código Sustantivo del Trabajo — Arts. 62, 64, 71',
-  'Circular Min. Trabajo 0042/2026',
-  'Sentencia C-218/26 — Corte Constitucional',
-  'Ley 1581 de 2012 — Habeas Data',
-  'Decreto 1234/2016 — SAGRILAFT',
-]
 
 function ConfidenceBadge({ level }: { level?: string }) {
   const map: Record<string, { label: string; class: string }> = {
@@ -44,19 +33,27 @@ function ConfidenceBadge({ level }: { level?: string }) {
   )
 }
 
-export default function CopilotoPage() {
+export default function DgaIaPage() {
   const { refresh } = useData()
+  const { sources, addSource, removeSource } = useKnowledgeStore()
   const [messages, setMessages] = useState<CopilotMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [activeSources, setActiveSources] = useState<string[]>([])
   const [noteState, setNoteState] = useState<Record<number, NoteState>>({})
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
+  const [sourceDialog, setSourceDialog] = useState(false)
+  const [newSource, setNewSource] = useState({ title: '', content: '' })
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  function agregarFuente() {
+    if (!newSource.title.trim() || !newSource.content.trim()) return
+    addSource(newSource.title, newSource.content)
+    setNewSource({ title: '', content: '' })
+  }
 
   async function crearBorrador(idx: number, msg: CopilotMessage) {
     if (noteState[idx]?.draftId || noteState[idx]?.saving) return
@@ -118,15 +115,15 @@ export default function CopilotoPage() {
       const res = await fetch('/api/copilot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify({
+          messages: apiMessages,
+          sources: sources.map(s => ({ title: s.title, content: s.content })),
+        }),
       })
       const data = await res.json()
-      const sources = MOCK_SOURCES.slice(0, 2 + Math.floor(Math.random() * 3))
-      setActiveSources(sources)
       const assistantMsg: CopilotMessage = {
         role: 'assistant',
         content: res.ok ? data.content : 'Lo siento, hubo un error al procesar su consulta. Por favor intente de nuevo.',
-        sources,
         confidence: res.ok ? data.confidence : 'bajo',
         requires_review: res.ok ? data.requires_review : false,
         timestamp: new Date().toISOString(),
@@ -150,19 +147,28 @@ export default function CopilotoPage() {
       {/* Main Chat */}
       <div className="flex-1 flex flex-col bg-white rounded-lg border border-border overflow-hidden">
         {/* Chat Header */}
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-brand-navy/3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-brand-navy flex items-center justify-center">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2 bg-brand-navy/3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-7 h-7 rounded-md bg-brand-navy flex items-center justify-center flex-shrink-0">
               <MessageSquare className="w-4 h-4 text-white" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Copiloto DG&A</p>
-              <p className="text-[10px] text-muted-foreground">Asistencia legal preliminar — powered by Claude</p>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">DG&A IA</p>
+              <p className="text-[10px] text-muted-foreground truncate">Asistencia legal interactiva — powered by Claude</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
-            <AlertTriangle className="w-3 h-3" />
-            Toda respuesta requiere revisión de abogado
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setSourceDialog(true)}
+              className="lg:hidden flex items-center gap-1 text-[11px] font-medium text-brand-navy bg-brand-navy/8 border border-brand-navy/15 px-2.5 py-1 rounded-md"
+            >
+              <Library className="w-3 h-3" />Fuentes ({sources.length})
+            </button>
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-md">
+              <AlertTriangle className="w-3 h-3" />
+              Requiere revisión de abogado
+            </div>
           </div>
         </div>
 
@@ -170,22 +176,14 @@ export default function CopilotoPage() {
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-4">
             {messages.length === 0 && (
-              <div className="py-8">
-                <p className="text-sm text-muted-foreground text-center mb-6">
-                  Consulte al Copiloto DG&A sobre temas de derecho colombiano.<br />
-                  <span className="text-xs">Respuestas basadas en legislación, jurisprudencia y doctrina nacional.</span>
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-xl mx-auto">
-                  {SUGGESTED_QUESTIONS.map((q, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setInput(q)}
-                      className="text-left text-xs text-foreground bg-muted hover:bg-muted/80 border border-border rounded-md px-3 py-2.5 transition-colors leading-snug"
-                    >
-                      {q}
-                    </button>
-                  ))}
+              <div className="py-12 text-center max-w-md mx-auto">
+                <div className="w-12 h-12 rounded-xl bg-brand-navy/8 flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="w-6 h-6 text-brand-navy" />
                 </div>
+                <p className="text-sm font-medium text-foreground mb-1.5">Consulta interactiva con DG&A IA</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Escriba su consulta jurídica con base en su experiencia. DG&A IA responde con derecho colombiano y prioriza las <strong className="text-foreground">fuentes propias de la firma</strong> que cargue.
+                </p>
               </div>
             )}
 
@@ -195,7 +193,7 @@ export default function CopilotoPage() {
                   "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold",
                   msg.role === 'user' ? 'bg-brand-navy text-white' : 'bg-brand-gold/20 text-brand-gold border border-brand-gold/30'
                 )}>
-                  {msg.role === 'user' ? 'U' : 'DG'}
+                  {msg.role === 'user' ? 'U' : 'IA'}
                 </div>
                 <div className={cn("max-w-[75%]", msg.role === 'user' ? 'items-end flex flex-col' : '')}>
                   <div className={cn(
@@ -269,10 +267,10 @@ export default function CopilotoPage() {
 
             {loading && (
               <div className="flex gap-3">
-                <div className="w-7 h-7 rounded-full bg-brand-gold/20 border border-brand-gold/30 flex items-center justify-center text-xs font-bold text-brand-gold">DG</div>
+                <div className="w-7 h-7 rounded-full bg-brand-gold/20 border border-brand-gold/30 flex items-center justify-center text-xs font-bold text-brand-gold">IA</div>
                 <div className="bg-muted rounded-lg rounded-tl-sm border border-border px-4 py-3 flex items-center gap-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Consultando fuentes legales...</span>
+                  <span className="text-xs text-muted-foreground">Analizando la consulta...</span>
                 </div>
               </div>
             )}
@@ -287,7 +285,7 @@ export default function CopilotoPage() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
-              placeholder="Consulte un tema legal colombiano... (Enter para enviar)"
+              placeholder="Escriba su consulta jurídica... (Enter para enviar)"
               className="flex-1 min-h-[60px] max-h-32 resize-none text-sm"
             />
             <Button onClick={sendMessage} disabled={loading || !input.trim()} className="h-10 px-4">
@@ -295,41 +293,106 @@ export default function CopilotoPage() {
             </Button>
           </div>
           <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-            Las respuestas del copiloto son asistencia preliminar. Toda respuesta requiere revisión de un abogado DG&A antes de ser utilizada.
+            Las respuestas de DG&A IA son asistencia preliminar. Toda respuesta requiere revisión de un abogado DG&A antes de ser utilizada.
           </p>
         </div>
       </div>
 
-      {/* Sources Panel */}
-      <div className="hidden lg:flex w-60 flex-col gap-3">
+      {/* Panel de Fuentes propias (escritorio) */}
+      <div className="hidden lg:flex w-64 flex-col gap-3">
         <div className="bg-white rounded-lg border border-border flex-1 flex flex-col overflow-hidden">
-          <div className="px-3 py-2.5 border-b border-border">
+          <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">
             <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-brand-gold" />
-              Fuentes consultadas
+              <Library className="w-3.5 h-3.5 text-brand-gold" />
+              Fuentes propias ({sources.length})
             </p>
+            <button type="button" onClick={() => setSourceDialog(true)} title="Agregar fuente" className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground">
+              <Plus className="w-3.5 h-3.5" />
+            </button>
           </div>
           <ScrollArea className="flex-1 p-3">
-            {activeSources.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Las fuentes aparecerán cuando realice una consulta</p>
+            {sources.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-xs text-muted-foreground">Aún no hay fuentes propias.</p>
+                <button type="button" onClick={() => setSourceDialog(true)} className="text-xs text-brand-gold font-medium mt-2 hover:underline">
+                  + Agregar la primera
+                </button>
+              </div>
             ) : (
               <div className="space-y-2">
-                {activeSources.map((src, i) => (
-                  <div key={i} className="text-xs p-2 bg-muted rounded-md border border-border">
-                    <p className="text-foreground font-medium leading-snug">{src}</p>
+                {sources.map(s => (
+                  <div key={s.id} className="group text-xs p-2 bg-muted rounded-md border border-border flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-foreground font-medium leading-snug truncate">{s.title || 'Sin título'}</p>
+                      <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{s.content}</p>
+                    </div>
+                    <button type="button" onClick={() => removeSource(s.id)} title="Eliminar fuente" className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-600 flex-shrink-0 transition-opacity">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 ))}
               </div>
             )}
           </ScrollArea>
+          <div className="px-3 py-2 border-t border-border">
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              La IA prioriza estas fuentes en sus respuestas, además del conocimiento jurídico en línea.
+            </p>
+          </div>
         </div>
 
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
           <p className="text-[10px] text-amber-800 leading-relaxed">
-            <strong>Aviso de uso:</strong> Este copiloto provee asistencia jurídica preliminar. Las respuestas no constituyen concepto legal vinculante. Consulte con el equipo DG&A para criterios definitivos.
+            <strong>Aviso de uso:</strong> DG&A IA provee asistencia jurídica preliminar. Las respuestas no constituyen concepto legal vinculante. Consulte con el equipo DG&A para criterios definitivos.
           </p>
         </div>
       </div>
+
+      {/* Diálogo de gestión de fuentes propias */}
+      <Dialog open={sourceDialog} onOpenChange={v => { if (!v) setSourceDialog(false) }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Library className="w-4 h-4 text-brand-gold" />Fuentes propias de la firma</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-2">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Agrega documentos, criterios, conceptos o lineamientos propios de DG&A. La IA los usará y citará al responder, además de su conocimiento general del derecho colombiano.
+            </p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Título *</Label>
+              <Input value={newSource.title} onChange={e => setNewSource(p => ({ ...p, title: e.target.value }))} className="text-sm" placeholder="Ej. Lineamiento interno — cláusulas de confidencialidad" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Contenido *</Label>
+              <Textarea
+                value={newSource.content}
+                onChange={e => setNewSource(p => ({ ...p, content: e.target.value }))}
+                className="text-sm min-h-[120px] max-h-60 resize-none"
+                placeholder="Pega aquí el texto de la fuente: criterio de la firma, concepto, política, extracto de un documento, etc."
+              />
+            </div>
+            <Button type="button" size="sm" className="w-full" onClick={agregarFuente} disabled={!newSource.title.trim() || !newSource.content.trim()}>
+              <Plus className="w-3.5 h-3.5 mr-1.5" />Agregar fuente
+            </Button>
+
+            {sources.length > 0 && (
+              <div className="pt-2 border-t border-border">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Fuentes cargadas ({sources.length})</p>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {sources.map(s => (
+                    <div key={s.id} className="flex items-center justify-between gap-2 text-xs p-2 bg-muted rounded-md border border-border">
+                      <span className="truncate font-medium text-foreground">{s.title || 'Sin título'}</span>
+                      <button type="button" onClick={() => removeSource(s.id)} title="Eliminar" className="text-muted-foreground hover:text-red-600 flex-shrink-0">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
