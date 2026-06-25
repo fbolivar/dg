@@ -29,7 +29,27 @@ Tablas clave de la feature: `captured_activities` y `user_integrations` (ambas e
 Bucket de Storage privado `backups` existe ✓ (lo usa el cron de respaldo).
 Compila: `npm run build` pasa limpio (no hay script `typecheck`; el build hace el chequeo de tipos).
 
-## Pendiente (runtime, NO bloquea compilación)
+## EN PRODUCCIÓN desde 2026-06-24
+- Deploy en vivo: **https://dga-legal.vercel.app** (Vercel proyecto `dga-legal`,
+  `prj_FMwz9K9fdJ0RQQNF7UaBwo49c6Ge`, team `team_cfaO6T6iLuHx5iv6KdqH1HIh`).
+  El MCP de Vercel da 403 en ese scope; verificar deploys desde el dashboard o por HTTP.
+- Verificado: `/login` 200, `/api/auth/me` 401, `/dashboard` sin sesión → 307 a `/login`
+  (gate server-side en `(main)/layout.tsx`). Auth y aislamiento por client_id OK.
+- Variables ya cargadas en Vercel (Production): JWT_SECRET, CRON_SECRET (generados nuevos
+  para prod), NEXT_PUBLIC_USE_MOCK=false, SUPABASE url/anon/service_role, ANTHROPIC_API_KEY,
+  NEXT_PUBLIC_SITE_URL=https://dga-legal.vercel.app.
+- Backup cron diario agendado (04:00 UTC) en vercel.json.
+- Único admin: fbolivarb@gmail.com (la cuenta demo admin@dga.com fue eliminada).
+
+## Pendiente (siguiente sesión)
+- Cliente debe probar login en prod y confirmar carga de datos reales.
+- Crear usuarios reales del cliente (Configuración → Usuarios).
+- Dominio propio → actualizar NEXT_PUBLIC_SITE_URL.
+- Integraciones OAuth (Google/Microsoft): se harán DESPUÉS con el cliente; faltan
+  TOKEN_ENCRYPTION_KEY + credenciales (ver GUIA-INTEGRACIONES.md y CHECKLIST-VERCEL.md).
+- Opcional: Vercel KV (KV_REST_API_URL/TOKEN) para rate-limit compartido.
+
+## Pendiente original (runtime, NO bloquea compilación)
 - Crear apps OAuth y poblar `.env.local` + Vercel: `TOKEN_ENCRYPTION_KEY` (openssl rand -hex 32),
   `GOOGLE_CLIENT_ID/SECRET`, `MICROSOFT_CLIENT_ID/SECRET/TENANT`. Sin `TOKEN_ENCRYPTION_KEY`
   las integraciones aparecen como "No configurado".
