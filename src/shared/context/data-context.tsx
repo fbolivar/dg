@@ -25,6 +25,8 @@ type DataState = {
   judicialProcesses: JudicialProcess[]
   judicialActuaciones: JudicialActuacion[]
   loading: boolean
+  error: boolean
+  reload: () => Promise<void>
   refresh: (table: string) => Promise<void>
 }
 
@@ -47,6 +49,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [judicialProcesses, setJudicialProcesses] = useState<JudicialProcess[]>([])
   const [judicialActuaciones, setJudicialActuaciones] = useState<JudicialActuacion[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   const refresh = useCallback(async (table: string) => {
     switch (table) {
@@ -68,9 +71,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  useEffect(() => {
-    async function loadAll() {
-      setLoading(true)
+  const reload = useCallback(async () => {
+    setLoading(true)
+    setError(false)
+    try {
       const [
         c, u, pa, a, ln, d, cr, m, me, dd, ddf, comp, hr, jp, ja
       ] = await Promise.all([
@@ -105,17 +109,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setHRTickets(hr)
       setJudicialProcesses(jp)
       setJudicialActuaciones(ja)
+    } catch (e) {
+      // Una sola tabla que falle no debe dejar la app congelada en el spinner:
+      // marcamos error para que DataGate muestre un reintento.
+      console.error('Error cargando datos del proyecto:', e)
+      setError(true)
+    } finally {
       setLoading(false)
     }
-    loadAll()
   }, [])
+
+  useEffect(() => {
+    reload()
+  }, [reload])
 
   return (
     <DataContext.Provider value={{
       clients, users, practiceAreas, alerts, legalNotes, documents,
       contractReviews, matters, matterEvents, dueDiligenceProjects,
       dueDiligenceFindings, complianceDiagnostics, hrTickets,
-      judicialProcesses, judicialActuaciones, loading, refresh,
+      judicialProcesses, judicialActuaciones, loading, error, reload, refresh,
     }}>
       {children}
     </DataContext.Provider>

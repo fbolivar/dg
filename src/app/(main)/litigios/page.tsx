@@ -1,37 +1,17 @@
 "use client"
 import { useState, useEffect } from 'react'
-import { Scale, Calendar, Clock, FileText, Plus, Pencil, Trash2, AlertCircle, X, PlusCircle, Check } from 'lucide-react'
+import { Clock, FileText, Plus, Pencil, Trash2, AlertCircle, X } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
 import { useData } from '@/shared/context/data-context'
 import * as db from '@/shared/services/db'
-import type { Matter, MatterEvent, MatterStatus, DgaCurrency, MatterOutcome } from '@/shared/types'
-
-const MATTER_STATUS_MAP: Record<MatterStatus, { label: string; class: string }> = {
-  activo: { label: 'Activo', class: 'bg-green-100 text-green-800 border-green-200' },
-  en_pausa: { label: 'En pausa', class: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-  cerrado: { label: 'Cerrado', class: 'bg-gray-100 text-gray-600 border-gray-200' },
-  archivado: { label: 'Archivado', class: 'bg-gray-100 text-gray-400 border-gray-200' },
-}
-const TYPES = ['litigio', 'consultoría', 'transaccional', 'compliance', 'regulatorio'] as const
-const EMPTY_FORM = {
-  title: '', client_id: '', practice_area_id: 'pa1', type: 'litigio' as typeof TYPES[number],
-  jurisdiction: '', parties: '', process_state: '', estimated_risk: '',
-  success_probability: '', next_action: '', next_deadline: '',
-  status: 'activo' as MatterStatus, assigned_to: 'u2',
-  budget_hours: '', budget_amount: '', budget_currency: 'COP' as DgaCurrency,
-  outcome: 'en_curso' as MatterOutcome, satisfaction: '',
-}
-const EMPTY_EVENT = { event_type: '', event_date: '', description: '' }
+import type { Matter, MatterEvent, MatterStatus } from '@/shared/types'
+import { MatterFormDialog, EMPTY_FORM } from './_components/matter-form-dialog'
+import { MatterDetailDialog, MATTER_STATUS_MAP } from './_components/matter-detail-dialog'
 
 function Toast({ msg, onClose }: { msg: string; onClose: () => void }) {
   return (
@@ -53,8 +33,6 @@ export default function LitigiosPage() {
   const [editing, setEditing] = useState<Matter | null>(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [deleteTarget, setDeleteTarget] = useState<Matter | null>(null)
-  const [showEventForm, setShowEventForm] = useState(false)
-  const [eventForm, setEventForm] = useState(EMPTY_EVENT)
   const [toast, setToast] = useState('')
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
@@ -142,16 +120,15 @@ export default function LitigiosPage() {
     showToast(`Estado cambiado a "${MATTER_STATUS_MAP[status].label}"`)
   }
 
-  const addEvent = async () => {
-    if (!eventForm.event_type.trim() || !selected) return
+  const addEvent = async (data: { event_type: string; event_date: string; description: string }) => {
+    if (!data.event_type.trim() || !selected) return
     const eventData = {
       matter_id: selected.id,
-      event_type: eventForm.event_type, event_date: eventForm.event_date || new Date().toISOString().split('T')[0],
-      description: eventForm.description, created_by: 'u1', created_at: new Date().toISOString(),
+      event_type: data.event_type, event_date: data.event_date || new Date().toISOString().split('T')[0],
+      description: data.description, created_by: 'u1', created_at: new Date().toISOString(),
     }
     const created = await db.createMatterEvent(eventData)
     if (created) setEvents(prev => [...prev, created])
-    setEventForm(EMPTY_EVENT); setShowEventForm(false)
     showToast('Actuación registrada')
   }
 
@@ -254,281 +231,28 @@ export default function LitigiosPage() {
         </CardContent>
       </Card>
 
-      {/* Detail Dialog */}
-      <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          {selected && (
-            <>
-              <DialogHeader>
-                <div className="flex items-start justify-between pr-6">
-                  <DialogTitle className="text-base pr-4">{selected.title}</DialogTitle>
-                  <div className="flex gap-1 flex-shrink-0">
-                    <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => openEdit(selected)}><Pencil className="w-3.5 h-3.5" /></Button>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-red-600" onClick={() => { setSelected(null); setDeleteTarget(selected) }}><Trash2 className="w-3.5 h-3.5" /></Button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${MATTER_STATUS_MAP[selected.status].class}`}>{MATTER_STATUS_MAP[selected.status].label}</span>
-                  <Badge variant="outline" className="text-[10px]">{selected.type}</Badge>
-                  <span className="text-xs text-muted-foreground">{selected.client?.name}</span>
-                </div>
-              </DialogHeader>
-              <div className="space-y-4 mt-2">
-                {/* Change status inline */}
-                <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-md">
-                  <span className="text-xs font-medium">Cambiar estado:</span>
-                  {Object.entries(MATTER_STATUS_MAP).map(([k, v]) => (
-                    <button type="button" key={k} onClick={() => changeStatus(selected.id, k as MatterStatus)}
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-all ${selected.status === k ? v.class : 'border-border text-muted-foreground hover:border-foreground'}`}>
-                      {v.label}
-                    </button>
-                  ))}
-                </div>
+      <MatterDetailDialog
+        selected={selected}
+        events={selectedEvents}
+        onClose={() => setSelected(null)}
+        onEdit={openEdit}
+        onDeleteRequest={setDeleteTarget}
+        onChangeStatus={changeStatus}
+        onRecordDeadline={recordDeadline}
+        onAddEvent={addEvent}
+      />
 
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: 'Partes', value: selected.parties },
-                    { label: 'Jurisdicción', value: selected.jurisdiction },
-                    { label: 'Estado procesal', value: selected.process_state },
-                    { label: 'Riesgo estimado', value: selected.estimated_risk },
-                  ].filter(i => i.value).map(item => (
-                    <div key={item.label} className="bg-muted/40 rounded-md p-2.5">
-                      <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide mb-0.5">{item.label}</p>
-                      <p className="text-xs text-foreground">{item.value}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {selected.success_probability !== undefined && (
-                  <div className="bg-muted/40 rounded-md p-3">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-xs font-semibold text-foreground">Probabilidad de éxito estimada</p>
-                      <span className={`text-lg font-bold ${selected.success_probability >= 60 ? 'text-green-600' : selected.success_probability >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {selected.success_probability}%
-                      </span>
-                    </div>
-                    <Progress value={selected.success_probability} className="h-2" />
-                  </div>
-                )}
-
-                {selected.next_action && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                    <p className="text-xs font-semibold text-blue-900 mb-1">Próxima acción</p>
-                    <p className="text-sm text-blue-800">{selected.next_action}</p>
-                    {selected.next_deadline && (
-                      <div className="flex items-center gap-1.5 mt-1.5 text-xs text-blue-700">
-                        <Calendar className="w-3 h-3" />
-                        <span>Vence: {new Date(selected.next_deadline).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Cumplimiento de plazos */}
-                <div className="bg-muted/40 border border-border rounded-md p-3">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div>
-                      <p className="text-xs font-semibold">Cumplimiento de plazos</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {(selected.deadlines_total ?? 0) > 0
-                          ? `${selected.deadlines_ontime ?? 0}/${selected.deadlines_total} a tiempo (${Math.round((selected.deadlines_ontime ?? 0) / (selected.deadlines_total ?? 1) * 100)}%)`
-                          : 'Sin plazos registrados aún'}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => recordDeadline(true)}><Check className="w-3 h-3 mr-1" />A tiempo</Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600" onClick={() => recordDeadline(false)}>Tarde</Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Timeline */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actuaciones procesales</p>
-                    <Button size="sm" variant="outline" className="h-7" onClick={() => { setEventForm(EMPTY_EVENT); setShowEventForm(true) }}>
-                      <PlusCircle className="w-3 h-3 mr-1" />Agregar
-                    </Button>
-                  </div>
-                  {selectedEvents.length > 0 ? (
-                    <div className="relative">
-                      <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
-                      <div className="space-y-3 ml-8">
-                        {selectedEvents.map((event, i) => (
-                          <div key={event.id} className="relative">
-                            <div className="absolute -left-[22px] top-1 w-2 h-2 rounded-full bg-brand-navy border-2 border-white shadow-sm" />
-                            <p className="text-[10px] text-muted-foreground">{new Date(event.event_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                            <p className="text-xs font-semibold text-foreground">{event.event_type}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{event.description}</p>
-                            {i < selectedEvents.length - 1 && <Separator className="mt-2" />}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-center py-4 bg-muted/30 rounded-md">Sin actuaciones registradas</p>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Event Dialog */}
-      <Dialog open={showEventForm} onOpenChange={setShowEventForm}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Nueva actuación procesal</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1">
-              <Label className="text-xs">Tipo de actuación *</Label>
-              <Input value={eventForm.event_type} onChange={e => setEventForm(p => ({ ...p, event_type: e.target.value }))} placeholder="Audiencia, notificación, recurso..." className="h-8 text-sm" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Fecha</Label>
-              <Input type="date" value={eventForm.event_date} onChange={e => setEventForm(p => ({ ...p, event_date: e.target.value }))} className="h-8 text-sm" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Descripción</Label>
-              <Textarea value={eventForm.description} onChange={e => setEventForm(p => ({ ...p, description: e.target.value }))} rows={3} className="text-sm resize-none" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setShowEventForm(false)}>Cancelar</Button>
-            <Button size="sm" onClick={addEvent} disabled={!eventForm.event_type.trim()}>Agregar actuación</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create/Edit Form */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editing ? 'Editar asunto' : 'Nuevo asunto'}</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1 col-span-2">
-              <Label className="text-xs">Título *</Label>
-              <Input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Nombre del asunto o caso" className="h-8 text-sm" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Cliente *</Label>
-                <Select value={form.client_id} onValueChange={v => setForm(p => ({ ...p, client_id: v }))}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                  <SelectContent>{clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name.split(' ').slice(0, 2).join(' ')}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Tipo</Label>
-                <Select value={form.type} onValueChange={v => setForm(p => ({ ...p, type: v as typeof TYPES[number] }))}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>{TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Área de práctica</Label>
-                <Select value={form.practice_area_id} onValueChange={v => setForm(p => ({ ...p, practice_area_id: v }))}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>{practiceAreas.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Estado</Label>
-                <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v as MatterStatus }))}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="activo">Activo</SelectItem>
-                    <SelectItem value="en_pausa">En pausa</SelectItem>
-                    <SelectItem value="cerrado">Cerrado</SelectItem>
-                    <SelectItem value="archivado">Archivado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Responsable</Label>
-                <Select value={form.assigned_to} onValueChange={v => setForm(p => ({ ...p, assigned_to: v }))}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>{users.filter(u => u.role !== 'cliente').map(u => <SelectItem key={u.id} value={u.id}>{u.full_name}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Probabilidad éxito (%)</Label>
-                <Input type="number" min="0" max="100" value={form.success_probability} onChange={e => setForm(p => ({ ...p, success_probability: e.target.value }))} placeholder="0-100" className="h-8 text-sm" />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Partes</Label>
-              <Input value={form.parties} onChange={e => setForm(p => ({ ...p, parties: e.target.value }))} placeholder="Demandante vs. Demandado" className="h-8 text-sm" />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Jurisdicción</Label>
-              <Input value={form.jurisdiction} onChange={e => setForm(p => ({ ...p, jurisdiction: e.target.value }))} placeholder="Juzgado, ciudad..." className="h-8 text-sm" />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Estado procesal</Label>
-                <Input value={form.process_state} onChange={e => setForm(p => ({ ...p, process_state: e.target.value }))} placeholder="Etapa actual" className="h-8 text-sm" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Próximo vencimiento</Label>
-                <Input type="date" value={form.next_deadline} onChange={e => setForm(p => ({ ...p, next_deadline: e.target.value }))} className="h-8 text-sm" />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Próxima acción recomendada</Label>
-              <Textarea value={form.next_action} onChange={e => setForm(p => ({ ...p, next_action: e.target.value }))} rows={2} className="text-sm resize-none" />
-            </div>
-            {/* Presupuesto del asunto (DGA-Time) */}
-            <div className="pt-2 border-t border-border">
-              <p className="text-[11px] font-medium text-muted-foreground mb-1.5">Presupuesto del asunto (opcional) · se compara contra las horas reales en DGA-Time</p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Horas presupuestadas</Label>
-                  <Input type="number" min="0" value={form.budget_hours} onChange={e => setForm(p => ({ ...p, budget_hours: e.target.value }))} className="h-8 text-sm" placeholder="Ej. 40" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Monto presupuestado</Label>
-                  <Input type="number" min="0" value={form.budget_amount} onChange={e => setForm(p => ({ ...p, budget_amount: e.target.value }))} className="h-8 text-sm" placeholder="Ej. 10000000" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Moneda</Label>
-                  <Select value={form.budget_currency} onValueChange={v => setForm(p => ({ ...p, budget_currency: v as DgaCurrency }))}>
-                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="COP" className="text-xs">COP</SelectItem><SelectItem value="USD" className="text-xs">USD</SelectItem></SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-            <div className="pt-2 border-t border-border grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Resultado del caso</Label>
-                <Select value={form.outcome} onValueChange={v => setForm(p => ({ ...p, outcome: v as MatterOutcome }))}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en_curso" className="text-xs">En curso</SelectItem>
-                    <SelectItem value="ganado" className="text-xs">Ganado</SelectItem>
-                    <SelectItem value="perdido" className="text-xs">Perdido</SelectItem>
-                    <SelectItem value="desistido" className="text-xs">Desistido</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Satisfacción cliente (1–5)</Label>
-                <Select value={form.satisfaction || 'none'} onValueChange={v => setForm(p => ({ ...p, satisfaction: v === 'none' ? '' : v }))}>
-                  <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Sin registrar" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" className="text-xs">Sin registrar</SelectItem>
-                    {[1, 2, 3, 4, 5].map(n => <SelectItem key={n} value={String(n)} className="text-xs">{n} ★</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setShowForm(false)}>Cancelar</Button>
-            <Button size="sm" onClick={saveMatter} disabled={!form.title.trim() || !form.client_id}>{editing ? 'Guardar cambios' : 'Crear asunto'}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <MatterFormDialog
+        open={showForm}
+        onOpenChange={setShowForm}
+        editing={!!editing}
+        form={form}
+        setForm={setForm}
+        onSave={saveMatter}
+        clients={clients}
+        practiceAreas={practiceAreas}
+        users={users}
+      />
 
       {/* Delete Confirm */}
       <Dialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

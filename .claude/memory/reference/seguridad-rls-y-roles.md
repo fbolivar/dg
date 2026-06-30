@@ -36,8 +36,15 @@ aplicadas en `src/app/api/auth/users/route.ts` y `.../users/[id]/route.ts`):
   `encryptBackup`/`decryptBackup` en `src/shared/lib/crypto.ts`. Sin clave sube en
   claro y lo avisa en la respuesta → **configurar `BACKUP_ENCRYPTION_KEY` en Vercel**.
 
+## Tests (Vitest) — agregados
+`npm test` (vitest). Suites puras en `src/shared/lib/*.test.ts`: `auth-rules` (matriz de
+privilegios/anti-escalación), `crypto` (roundtrip + tamper tokens y backups), `login-rate-limit`
+(bloqueo 5/15min, memoria), `cron` (checkCronAuth fail-closed). Reglas de privilegio extraídas a
+`auth-rules.ts` (puro) y `MIN_PASSWORD_LENGTH` a `auth-constants.ts` (client-safe); auth.ts reexporta.
+
 ## Pendientes de seguridad (no hechos aún)
-- Adoptar Zod en endpoints; sanear inputs de IA (prompt injection); tests.
+- Adoptar Zod en endpoints (validación manual hoy).
 - Configurar `BACKUP_ENCRYPTION_KEY` en Vercel (si no, los backups van sin cifrar).
+- Tests de aislamiento por client_id en db.ts (requieren mock de Supabase; no cubiertos aún).
 
 Relacionado: [[supabase-dga-legal]] · [[dgatime-captura-inteligente]]

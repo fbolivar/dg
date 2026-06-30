@@ -85,20 +85,29 @@ La firma ha cargado las siguientes fuentes internas. Priorízalas y cítalas exp
 ${bloque}`
   }
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
-      system,
-      messages,
-    }),
-  })
+  let response: Response
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-5',
+        max_tokens: 1500,
+        // thinking off: respuesta directa, sin la latencia del adaptive thinking
+        // (que en Sonnet 5 viene activo por defecto si se omite).
+        thinking: { type: 'disabled' },
+        system,
+        messages,
+      }),
+      signal: AbortSignal.timeout(60_000), // evita que un upstream colgado bloquee la función
+    })
+  } catch {
+    return NextResponse.json({ error: 'La consulta tardó demasiado. Intente de nuevo.' }, { status: 504 })
+  }
 
   if (!response.ok) {
     await response.text().catch(() => '') // consume sin reenviar detalles del upstream

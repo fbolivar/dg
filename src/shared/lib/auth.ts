@@ -63,29 +63,13 @@ function getSecret(): string {
 export const SESSION_COOKIE = 'dga_session'
 export const SESSION_MAX_AGE = 60 * 60 * 8 // 8 horas
 
-// Longitud mínima de contraseña (legal-tech: cuentas con acceso a datos sensibles).
-export const MIN_PASSWORD_LENGTH = 10
+// Longitud mínima de contraseña — definida en auth-constants (client-safe) y
+// reexportada aquí para el código de servidor.
+export { MIN_PASSWORD_LENGTH } from '@/shared/lib/auth-constants'
 
 // ─── Reglas de privilegio ─────────────────────────────────────────────────────
-// Las cuentas `admin` y `socio` son privilegiadas: gestionarlas o asignar esos
-// roles queda reservado a un `admin`. Esto evita que un `socio` se auto-promueva
-// a admin o tome el control de otra cuenta privilegiada (cambio de rol / reseteo
-// de contraseña). Un `socio` solo puede gestionar cuentas `asociado` y `cliente`.
-const PRIVILEGED_ROLES: UserRole[] = ['admin', 'socio']
-
-export function isPrivilegedRole(role: UserRole): boolean {
-  return PRIVILEGED_ROLES.includes(role)
-}
-
-/** ¿Puede `actorRole` asignar/crear una cuenta con rol `targetRole`? */
-export function canAssignRole(actorRole: UserRole, targetRole: UserRole): boolean {
-  return isPrivilegedRole(targetRole) ? actorRole === 'admin' : true
-}
-
-/** ¿Puede `actorRole` editar/eliminar a un usuario que hoy tiene rol `targetRole`? */
-export function canManageUserWithRole(actorRole: UserRole, targetRole: UserRole): boolean {
-  return isPrivilegedRole(targetRole) ? actorRole === 'admin' : true
-}
+// Definidas en auth-rules (puras, testeables) y reexportadas aquí.
+export { isPrivilegedRole, canAssignRole, canManageUserWithRole } from '@/shared/lib/auth-rules'
 
 /** Devuelve el rol actual de un usuario (o null si no existe). */
 export async function getUserRoleById(id: string): Promise<UserRole | null> {
