@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/shared/lib/supabase-admin'
+import { checkCronAuth } from '@/shared/lib/cron'
+import { backupEncryptionReady, encryptBackup } from '@/shared/lib/crypto'
 
 /**
  * ─── CRON: respaldo automático de la base de datos ───────────────────────────
@@ -24,13 +26,8 @@ const TABLES = [
 const RETENTION = 30
 
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET
-  if (!secret) {
-    return NextResponse.json({ error: 'CRON_SECRET no configurado' }, { status: 500 })
-  }
-  if (req.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  }
+  const denied = checkCronAuth(req)
+  if (denied) return denied
 
   const exported_at = new Date().toISOString()
   const dump: Record<string, unknown> = { exported_at }
@@ -46,10 +43,19 @@ export async function GET(req: NextRequest) {
   }
 
   const stamp = exported_at.replace(/[:.]/g, '-')
-  const path = `auto/backup-${stamp}.json`
+  const json = JSON.stringify(dump)
+
+  // Cifrado en reposo (AES-256-GCM) si hay clave configurada. El dump contiene
+  // datos sensibles (hashes, datos financieros, tokens OAuth), así que se cifra
+  // antes de subir. Sin clave se sube en claro (compatibilidad) pero se avisa.
+  const encrypted = backupEncryptionReady()
+  const path = encrypted ? `auto/backup-${stamp}.json.enc` : `auto/backup-${stamp}.json`
+  const payload = encrypted ? encryptBackup(json) : json
+  const contentType = encrypted ? 'application/octet-stream' : 'application/json'
+
   const { error: upErr } = await supabaseAdmin.storage
     .from('backups')
-    .upload(path, JSON.stringify(dump), { contentType: 'application/json', upsert: false })
+    .upload(path, payload, { contentType, upsert: false })
   if (upErr) {
     return NextResponse.json({ error: `Error subiendo respaldo: ${upErr.message}` }, { status: 500 })
   }
@@ -72,6 +78,8 @@ export async function GET(req: NextRequest) {
     job: 'backup',
     ejecutado_en: exported_at,
     archivo: path,
+    cifrado: encrypted,
+    aviso: encrypted ? undefined : 'Respaldo SIN cifrar: configure BACKUP_ENCRYPTION_KEY (o TOKEN_ENCRYPTION_KEY) para cifrar en reposo.',
     filas: counts,
     eliminados_por_retencion: pruned,
   })

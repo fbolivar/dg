@@ -166,8 +166,8 @@ export default function ConfiguracionPage() {
 
   async function saveUser() {
     if (!userForm.full_name || !userForm.email || !userForm.role) return
-    if (!editingUser && (!userForm.password || userForm.password.length < 6)) {
-      showToast('La contraseña debe tener al menos 6 caracteres'); return
+    if (!editingUser && (!userForm.password || userForm.password.length < 10)) {
+      showToast('La contraseña debe tener al menos 10 caracteres'); return
     }
     const payload = {
       name: userForm.full_name,

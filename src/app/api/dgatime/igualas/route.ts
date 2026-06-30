@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateDueRecurringFees } from '@/shared/services/db-raw'
+import { checkCronAuth } from '@/shared/lib/cron'
 
 /**
  * ─── CRON: generación automática de igualas / cobros recurrentes ─────────────
@@ -13,13 +14,8 @@ import { generateDueRecurringFees } from '@/shared/services/db-raw'
 export const maxDuration = 60
 
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET
-  if (!secret) {
-    return NextResponse.json({ error: 'CRON_SECRET no configurado' }, { status: 500 })
-  }
-  if (req.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  }
+  const denied = checkCronAuth(req)
+  if (denied) return denied
 
   const todayISO = new Date().toISOString().slice(0, 10)
   const res = await generateDueRecurringFees(todayISO)

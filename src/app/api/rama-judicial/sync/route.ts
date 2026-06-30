@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { consultarProceso } from '@/shared/lib/rama-judicial'
 import * as raw from '@/shared/services/db-raw'
+import { checkCronAuth } from '@/shared/lib/cron'
 import type { JudicialActuacion } from '@/shared/types'
 
 /**
@@ -24,15 +25,9 @@ import type { JudicialActuacion } from '@/shared/types'
 export const maxDuration = 60 // segundos (la consulta a la Rama puede tardar)
 
 export async function GET(req: NextRequest) {
-  // Autorización del cron (fail-closed: si no hay secreto configurado, se rechaza)
-  const secret = process.env.CRON_SECRET
-  if (!secret) {
-    return NextResponse.json({ error: 'CRON_SECRET no configurado' }, { status: 500 })
-  }
-  const auth = req.headers.get('authorization')
-  if (auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  }
+  // Autorización del cron (fail-closed + comparación en tiempo constante).
+  const denied = checkCronAuth(req)
+  if (denied) return denied
 
   // Procesos reales en seguimiento (Supabase, vía service role — sin sesión).
   const procesos = await raw.getJudicialProcesses()

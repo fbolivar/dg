@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { captureForAllEnabled } from '@/shared/services/capture'
+import { checkCronAuth } from '@/shared/lib/cron'
 
 /**
  * ─── CRON: captura inteligente diaria ────────────────────────────────────────
@@ -12,11 +13,8 @@ import { captureForAllEnabled } from '@/shared/services/capture'
 export const maxDuration = 60
 
 export async function GET(req: NextRequest) {
-  const secret = process.env.CRON_SECRET
-  if (!secret) return NextResponse.json({ error: 'CRON_SECRET no configurado' }, { status: 500 })
-  if (req.headers.get('authorization') !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  }
+  const denied = checkCronAuth(req)
+  if (denied) return denied
 
   const res = await captureForAllEnabled()
   return NextResponse.json({

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { verifySession, listUsers, addUser, SESSION_COOKIE } from '@/shared/lib/auth'
+import { verifySession, listUsers, addUser, canAssignRole, MIN_PASSWORD_LENGTH, SESSION_COOKIE } from '@/shared/lib/auth'
 import { logAudit } from '@/shared/services/db-raw'
 import type { UserRole } from '@/shared/types'
+
+const VALID_ROLES: UserRole[] = ['socio', 'asociado', 'cliente', 'admin']
 
 async function requireManager() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value
@@ -37,8 +39,15 @@ export async function POST(req: NextRequest) {
   if (!name || !email || !role || !password) {
     return NextResponse.json({ error: 'Faltan campos: nombre, correo, rol y contraseña' }, { status: 400 })
   }
-  if (password.length < 6) {
-    return NextResponse.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 })
+  if (!VALID_ROLES.includes(role as UserRole)) {
+    return NextResponse.json({ error: 'Rol inválido' }, { status: 400 })
+  }
+  // Solo un admin puede crear cuentas privilegiadas (socio/admin).
+  if (!canAssignRole(session.role, role as UserRole)) {
+    return NextResponse.json({ error: 'Solo un administrador puede crear cuentas de socio o administrador' }, { status: 403 })
+  }
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return NextResponse.json({ error: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres` }, { status: 400 })
   }
 
   const user = await addUser({ name, email, role: role as UserRole, client_id, is_active, password, dgatime_enabled, hourly_rate, cost_rate, rate_currency })

@@ -87,7 +87,7 @@ export default function PerfilPage() {
   function savePassword() {
     setPwError('')
     if (!passwords.current) { setPwError('Ingresa tu contraseña actual'); return }
-    if (passwords.next.length < 8) { setPwError('La nueva contraseña debe tener al menos 8 caracteres'); return }
+    if (passwords.next.length < 10) { setPwError('La nueva contraseña debe tener al menos 10 caracteres'); return }
     if (passwords.next !== passwords.confirm) { setPwError('Las contraseñas no coinciden'); return }
     if (passwords.current !== 'demo1234') { setPwError('Contraseña actual incorrecta'); return }
     setPasswords({ current: '', next: '', confirm: '' })

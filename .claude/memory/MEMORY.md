@@ -14,3 +14,4 @@
 
 ## reference/ — Donde encontrar cosas
 - [Supabase dga-legal](reference/supabase-dga-legal.md) — ref kbjihgmpmfccpmhbotys, sa-east-1; usar MCP claude_ai_Supabase (el otro da Unauthorized)
+- [Seguridad RLS y roles](reference/seguridad-rls-y-roles.md) — RLS sin políticas es intencional (service-role only); modelo de roles; hardening 2026-06-30
