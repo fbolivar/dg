@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import {
   verifySession, updateUser, removeUser, getUserRoleById,
-  canAssignRole, canManageUserWithRole, MIN_PASSWORD_LENGTH, SESSION_COOKIE,
+  canAssignRole, canManageUserWithRole, SESSION_COOKIE,
 } from '@/shared/lib/auth'
 import { logAudit } from '@/shared/services/db-raw'
-import type { UserRole } from '@/shared/types'
-
-const VALID_ROLES: UserRole[] = ['socio', 'asociado', 'cliente', 'admin']
+import { updateUserSchema } from '@/shared/lib/validation'
 
 async function requireManager() {
   const token = (await cookies()).get(SESSION_COOKIE)?.value
@@ -30,31 +28,31 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: 'No autorizado para gestionar esta cuenta' }, { status: 403 })
   }
 
-  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
+  const body = await req.json().catch(() => null)
+  const parsed = updateUserSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }, { status: 400 })
+  }
+  const d = parsed.data
   const updates: Record<string, unknown> = {}
-  if (typeof body?.name === 'string') updates.name = body.name
-  if (typeof body?.email === 'string') updates.email = body.email
-  if (typeof body?.role === 'string') {
-    const newRole = body.role as UserRole
-    if (!VALID_ROLES.includes(newRole)) return NextResponse.json({ error: 'Rol inválido' }, { status: 400 })
+  if (d.name !== undefined) updates.name = d.name
+  if (d.email !== undefined) updates.email = d.email
+  if (d.role !== undefined) {
     // Nadie cambia su propio rol (evita auto-escalación).
     if (id === session.id) return NextResponse.json({ error: 'No puedes cambiar tu propio rol' }, { status: 403 })
     // Solo un admin asigna roles privilegiados.
-    if (!canAssignRole(session.role, newRole)) {
+    if (!canAssignRole(session.role, d.role)) {
       return NextResponse.json({ error: 'Solo un administrador puede asignar el rol de socio o administrador' }, { status: 403 })
     }
-    updates.role = newRole
+    updates.role = d.role
   }
-  if (typeof body?.client_id === 'string') updates.client_id = body.client_id
-  if (typeof body?.is_active === 'boolean') updates.is_active = body.is_active
-  if (typeof body?.dgatime_enabled === 'boolean') updates.dgatime_enabled = body.dgatime_enabled
-  if (typeof body?.hourly_rate === 'number') updates.hourly_rate = body.hourly_rate
-  if (typeof body?.cost_rate === 'number') updates.cost_rate = body.cost_rate
-  if (body?.rate_currency === 'COP' || body?.rate_currency === 'USD') updates.rate_currency = body.rate_currency
-  if (typeof body?.password === 'string' && body.password.length > 0) {
-    if (body.password.length < MIN_PASSWORD_LENGTH) return NextResponse.json({ error: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres` }, { status: 400 })
-    updates.password = body.password
-  }
+  if (d.client_id !== undefined) updates.client_id = d.client_id
+  if (d.is_active !== undefined) updates.is_active = d.is_active
+  if (d.dgatime_enabled !== undefined) updates.dgatime_enabled = d.dgatime_enabled
+  if (d.hourly_rate !== undefined) updates.hourly_rate = d.hourly_rate
+  if (d.cost_rate !== undefined) updates.cost_rate = d.cost_rate
+  if (d.rate_currency !== undefined) updates.rate_currency = d.rate_currency
+  if (d.password) updates.password = d.password
 
   const user = await updateUser(id, updates)
   if (!user) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })

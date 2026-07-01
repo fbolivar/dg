@@ -71,12 +71,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // Tablas pesadas/voluminosas que solo se usan en vistas de detalle
+  // (timeline de actuaciones de un asunto, actuaciones de un proceso). Se cargan
+  // en segundo plano para no bloquear la primera interacción.
+  const loadDeferred = useCallback(async () => {
+    const [me, ja] = await Promise.all([
+      db.getMatterEvents(),
+      db.getJudicialActuaciones(),
+    ])
+    setMatterEvents(me)
+    setJudicialActuaciones(ja)
+  }, [])
+
   const reload = useCallback(async () => {
     setLoading(true)
     setError(false)
     try {
+      // Fase 1 (bloqueante): lo que necesita la mayoría de páginas y KPIs.
       const [
-        c, u, pa, a, ln, d, cr, m, me, dd, ddf, comp, hr, jp, ja
+        c, u, pa, a, ln, d, cr, m, dd, ddf, comp, hr, jp
       ] = await Promise.all([
         db.getClients(),
         db.getUsers(),
@@ -86,13 +99,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         db.getDocuments(),
         db.getContractReviews(),
         db.getMatters(),
-        db.getMatterEvents(),
         db.getDueDiligenceProjects(),
         db.getDueDiligenceFindings(),
         db.getComplianceDiagnostics(),
         db.getHRTickets(),
         db.getJudicialProcesses(),
-        db.getJudicialActuaciones(),
       ])
       setClients(c)
       setUsers(u)
@@ -102,22 +113,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setDocuments(d)
       setContractReviews(cr)
       setMatters(m)
-      setMatterEvents(me)
       setDueDiligenceProjects(dd)
       setDueDiligenceFindings(ddf)
       setComplianceDiagnostics(comp)
       setHRTickets(hr)
       setJudicialProcesses(jp)
-      setJudicialActuaciones(ja)
     } catch (e) {
       // Una sola tabla que falle no debe dejar la app congelada en el spinner:
       // marcamos error para que DataGate muestre un reintento.
       console.error('Error cargando datos del proyecto:', e)
       setError(true)
-    } finally {
       setLoading(false)
+      return
     }
-  }, [])
+    // La UI ya es usable: liberamos el gate y traemos lo diferido en segundo plano.
+    setLoading(false)
+    loadDeferred().catch(e => console.error('Error cargando datos diferidos:', e))
+  }, [loadDeferred])
 
   useEffect(() => {
     reload()

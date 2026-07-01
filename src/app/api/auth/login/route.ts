@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyCredentials, signSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/shared/lib/auth'
 import { isLoginBlocked, registerFailedLogin, clearLoginAttempts } from '@/shared/lib/login-rate-limit'
+import { loginSchema } from '@/shared/lib/validation'
 
 function clientIp(req: NextRequest): string {
   return (
@@ -18,11 +19,11 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Solicitud inválida' }, { status: 400 })
   }
-  const email = typeof (body as { email?: unknown })?.email === 'string' ? (body as { email: string }).email : ''
-  const password = typeof (body as { password?: unknown })?.password === 'string' ? (body as { password: string }).password : ''
-  if (!email || !password) {
+  const parsed = loginSchema.safeParse(body)
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Ingresa correo y contraseña' }, { status: 400 })
   }
+  const { email, password } = parsed.data
 
   // Anti fuerza bruta: límite de intentos fallidos por (IP + correo).
   const rlId = `${clientIp(req)}:${email.trim().toLowerCase()}`

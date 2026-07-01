@@ -42,9 +42,21 @@ privilegios/anti-escalación), `crypto` (roundtrip + tamper tokens y backups), `
 (bloqueo 5/15min, memoria), `cron` (checkCronAuth fail-closed). Reglas de privilegio extraídas a
 `auth-rules.ts` (puro) y `MIN_PASSWORD_LENGTH` a `auth-constants.ts` (client-safe); auth.ts reexporta.
 
-## Pendientes de seguridad (no hechos aún)
-- Adoptar Zod en endpoints (validación manual hoy).
-- Configurar `BACKUP_ENCRYPTION_KEY` en Vercel (si no, los backups van sin cifrar).
-- Tests de aislamiento por client_id en db.ts (requieren mock de Supabase; no cubiertos aún).
+## Aislamiento multi-tenant (db.ts refactorizado)
+`db.ts` (520) partido en `src/shared/services/db/` (barrel "use server"): `legal.ts`, `dgatime.ts`,
+guards en `_guards.ts` y el filtro PURO en `_isolation.ts` (`filterByClient`/`filterAlertsByClient`,
+testeado en `_isolation.test.ts`). **Fix**: los filtros `x.client_id === s.client_id` ya no colisionan
+cuando ambos son null/undefined — un `cliente` sin `client_id` no ve nada.
+
+## Validación Zod (hecho)
+Esquemas en `src/shared/lib/validation.ts` aplicados en: login, auth/users (POST + [id] PATCH),
+legal-notes/generate, copilot, rama-judicial/consultar. `validation.test.ts` cubre los esquemas.
+
+## Manejo de errores (hecho)
+Error boundaries de Next: `src/app/global-error.tsx` (raíz) y `src/app/(main)/error.tsx` (segmento).
+DataProvider carga en 2 fases (core bloqueante + matterEvents/judicialActuaciones diferidas).
+
+## Pendientes (no hechos aún)
+- Configurar `BACKUP_ENCRYPTION_KEY` en Vercel (lo gestiona el usuario; si no, backups sin cifrar).
 
 Relacionado: [[supabase-dga-legal]] · [[dgatime-captura-inteligente]]

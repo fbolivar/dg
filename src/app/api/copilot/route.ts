@@ -1,71 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/shared/lib/auth'
-
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-// Límites de validación: previenen payloads abusivos / inyección de contexto.
-const MAX_MESSAGES = 30
-const MAX_CONTENT_CHARS = 8000
-
-function validateMessages(input: unknown): Message[] | null {
-  if (!Array.isArray(input) || input.length === 0 || input.length > MAX_MESSAGES) return null
-  const clean: Message[] = []
-  for (const m of input) {
-    if (typeof m !== 'object' || m === null) return null
-    const { role, content } = m as Record<string, unknown>
-    if (role !== 'user' && role !== 'assistant') return null
-    if (typeof content !== 'string' || content.length === 0 || content.length > MAX_CONTENT_CHARS) return null
-    clean.push({ role, content })
-  }
-  return clean
-}
-
-// Fuentes propias de la firma (base de conocimiento). Se inyectan en el prompt.
-interface Source { title: string; content: string }
-const MAX_SOURCES = 8
-const MAX_SOURCE_CHARS = 4000
-
-function validateSources(input: unknown): Source[] {
-  if (!Array.isArray(input)) return []
-  const clean: Source[] = []
-  for (const s of input.slice(0, MAX_SOURCES)) {
-    if (typeof s !== 'object' || s === null) continue
-    const { title, content } = s as Record<string, unknown>
-    if (typeof content !== 'string' || !content.trim()) continue
-    clean.push({
-      title: (typeof title === 'string' ? title : '').trim().slice(0, 200),
-      content: content.trim().slice(0, MAX_SOURCE_CHARS),
-    })
-  }
-  return clean
-}
+import { copilotSchema } from '@/shared/lib/validation'
 
 export async function POST(req: NextRequest) {
   if (!(await getSession())) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
   }
 
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 })
-  }
-
-  const messages = validateMessages((body as { messages?: unknown })?.messages)
-  if (!messages) {
+  const body = await req.json().catch(() => null)
+  const parsed = copilotSchema.safeParse(body)
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Formato de mensajes inválido' }, { status: 400 })
   }
+  const { messages, sources } = parsed.data
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
   }
-
-  const sources = validateSources((body as { sources?: unknown })?.sources)
   let system = `Eres DG&A IA, el asistente jurídico interno de DG&A Abogados, una firma boutique colombiana especializada en derecho corporativo, laboral, compliance, M&A y contratación pública.
 
 Respondes con base en el conocimiento legal colombiano y los lineamientos de la firma.

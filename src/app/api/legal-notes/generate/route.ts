@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/shared/lib/auth'
+import { legalNoteSchema } from '@/shared/lib/validation'
 
-// Límite por campo: evita payloads abusivos hacia el modelo.
-const MAX_FIELD_CHARS = 4000
-
-// Saneo anti prompt-injection: recorta, quita encabezados markdown (que podrían
-// colisionar con la estructura "## SECCIÓN" que parseamos en la salida) y elimina
-// los marcadores de delimitación para que el usuario no pueda cerrar el bloque
-// de datos e inyectar instrucciones.
-function str(v: unknown): string {
-  if (typeof v !== 'string') return ''
+// Saneo anti prompt-injection: quita encabezados markdown (que podrían colisionar
+// con la estructura "## SECCIÓN" que parseamos en la salida) y elimina los
+// marcadores de delimitación para que el usuario no pueda cerrar el bloque de
+// datos e inyectar instrucciones. (Zod ya valida forma y longitud máxima.)
+function sanitize(v: string): string {
   return v
-    .slice(0, MAX_FIELD_CHARS)
     .replace(/<<<\/?(?:DATOS|FIN_DATOS)>>>/gi, '')
     .replace(/^[ \t]*#{1,6}[ \t]+/gm, '') // encabezados ATX al inicio de línea
     .replace(/\n{3,}/g, '\n\n')
@@ -23,24 +19,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
   }
 
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Cuerpo de solicitud inválido' }, { status: 400 })
-  }
-
-  const b = (body ?? {}) as Record<string, unknown>
-  const alert_title = str(b.alert_title)
-  const alert_summary = str(b.alert_summary)
-  const alert_recommendation = str(b.alert_recommendation)
-  const audience = str(b.audience)
-  const tone = str(b.tone)
-  const practice_area = str(b.practice_area)
-
-  if (!alert_title || !audience || !tone) {
+  const body = await req.json().catch(() => null)
+  const parsed = legalNoteSchema.safeParse(body)
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
   }
+  const alert_title = sanitize(parsed.data.alert_title)
+  const alert_summary = sanitize(parsed.data.alert_summary)
+  const alert_recommendation = sanitize(parsed.data.alert_recommendation)
+  const audience = sanitize(parsed.data.audience)
+  const tone = sanitize(parsed.data.tone)
+  const practice_area = sanitize(parsed.data.practice_area)
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
