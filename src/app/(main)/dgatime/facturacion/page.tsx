@@ -99,7 +99,7 @@ export default function FacturacionPage() {
     if (liveItems.length === 0) { showToast('Agrega al menos una línea / hora'); return }
     try {
       await createInvoice({
-        client_id: clientId, type, currency, issue_date: issueDate,
+        client_id: clientId, type, currency, issue_date: issueDate || new Date().toISOString().slice(0, 10),
         due_date: dueDate || undefined,
         period_start: periodStart || undefined, period_end: periodEnd || undefined,
         tax_rate: Number(taxRate) || 0, notes: notes || undefined,

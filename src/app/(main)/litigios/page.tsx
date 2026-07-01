@@ -73,6 +73,8 @@ export default function LitigiosPage() {
     const base = {
       ...form,
       client, practice_area: pa, assigned_user: user,
+      // Fecha opcional: vacío → undefined (una cadena '' rompe la columna timestamptz).
+      next_deadline: form.next_deadline || undefined,
       success_probability: form.success_probability ? parseInt(form.success_probability) : undefined,
       budget_hours: form.budget_hours ? Number(form.budget_hours) : undefined,
       budget_amount: form.budget_amount ? Number(form.budget_amount) : undefined,
@@ -89,7 +91,8 @@ export default function LitigiosPage() {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { client: _c, practice_area: _pa, assigned_user: _au, ...matterDbFields } = base
       const created = await db.createMatter({ ...matterDbFields, created_at: new Date().toISOString() })
-      if (created) setMatters(prev => [{ ...created, client, practice_area: pa, assigned_user: user }, ...prev])
+      if (!created) { showToast('No se pudo crear el asunto'); return } // no reportar éxito falso
+      setMatters(prev => [{ ...created, client, practice_area: pa, assigned_user: user }, ...prev])
       showToast('Asunto creado')
     }
     setShowForm(false)

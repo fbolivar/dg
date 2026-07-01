@@ -69,7 +69,7 @@ export default function IgualasPage() {
       tax_rate: Number(form.tax_rate) || 0,
       frequency: form.frequency,
       day_of_month: Math.min(28, Math.max(1, Number(form.day_of_month) || 1)),
-      start_date: form.start_date,
+      start_date: form.start_date || today(), // vacío → hoy (columna date no acepta '')
       end_date: form.end_date || undefined,
       active: form.active,
     }

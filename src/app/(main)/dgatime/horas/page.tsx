@@ -97,7 +97,7 @@ export default function RegistroHorasPage() {
     const payload = {
       client_id: form.client_id,
       matter_id: form.matter_id || undefined,
-      date: form.date,
+      date: form.date || today(), // vacío → hoy (columna date no acepta '')
       minutes,
       activity: form.activity,
       description: form.description,

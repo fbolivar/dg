@@ -86,7 +86,7 @@ export default function CapturaPage() {
     if (!manual.note.trim()) { showToast('Escribe la actividad'); return }
     setManualBusy(true)
     try {
-      await addManualCapture({ note: manual.note, client_id: manual.client_id || undefined, matter_id: manual.matter_id || undefined, date: manual.date, minutes: manual.minutes ? Number(manual.minutes) : undefined })
+      await addManualCapture({ note: manual.note, client_id: manual.client_id || undefined, matter_id: manual.matter_id || undefined, date: manual.date || new Date().toISOString().slice(0, 10), minutes: manual.minutes ? Number(manual.minutes) : undefined })
       setManualOpen(false); setManual({ note: '', client_id: '', matter_id: '', date: new Date().toISOString().slice(0, 10), minutes: '' })
       setTab('sugerida'); await load(); showToast('Actividad anotada — la IA redactó la glosa')
     } catch (err) { showToast(err instanceof Error ? err.message : 'Error') }
