@@ -15,6 +15,15 @@ import { AiDisclaimer } from '@/components/layout/ai-disclaimer'
 import { useData } from '@/shared/context/data-context'
 import * as db from '@/shared/services/db'
 import type { LegalNote, NoteStatus } from '@/shared/types'
+import { printNotaLegal } from './_lib/nota-legal-pdf'
+
+type NoteSource = 'alert' | 'manual'
+const EMPTY_NEW = {
+  source: 'alert' as NoteSource,
+  alert_id: '', man_title: '', man_text: '', man_reco: '', man_area: '',
+  audience: '', tone: '', title: '', generated: false,
+  content_draft: '', content_email: '', content_linkedin: '', content_summary: '',
+}
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   borrador_ia: { label: 'Borrador IA', color: 'bg-gray-100 text-gray-700 border-gray-200' },
@@ -45,42 +54,86 @@ export default function LegalNotesPage() {
   const [generating, setGenerating] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<LegalNote | null>(null)
   const [toast, setToast] = useState('')
-  const [newNote, setNewNote] = useState({ alert_id: '', audience: '', tone: '', title: '', generated: false, content_draft: '', content_email: '', content_linkedin: '', content_summary: '' })
+  const [newNote, setNewNote] = useState(EMPTY_NEW)
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
-  async function generateDraft() {
+  // Construye el payload para la IA según el modo (alerta registrada o texto propio).
+  function buildPayload(): { alert_title: string; alert_summary: string; alert_recommendation: string; audience: string; tone: string; practice_area: string; titleBase: string } | null {
+    if (!newNote.audience || !newNote.tone) return null
+    if (newNote.source === 'manual') {
+      if (!newNote.man_title.trim() || !newNote.man_text.trim()) return null
+      return {
+        alert_title: newNote.man_title.trim(),
+        alert_summary: newNote.man_text.trim(),
+        alert_recommendation: newNote.man_reco.trim(),
+        audience: newNote.audience, tone: newNote.tone,
+        practice_area: practiceAreas.find(p => p.id === newNote.man_area)?.name ?? '',
+        titleBase: newNote.man_title.trim(),
+      }
+    }
     const alert = alerts.find(a => a.id === newNote.alert_id)
-    if (!alert || !newNote.audience || !newNote.tone) return
+    if (!alert) return null
+    return {
+      alert_title: alert.title,
+      alert_summary: alert.summary ?? '',
+      alert_recommendation: alert.recommendation ?? '',
+      audience: newNote.audience, tone: newNote.tone,
+      practice_area: alert.practice_area?.name ?? '',
+      titleBase: alert.title,
+    }
+  }
+
+  async function generateDraft() {
+    const payload = buildPayload()
+    if (!payload) return
     setGenerating(true)
-    await new Promise(r => setTimeout(r, 1800))
-    setNewNote(prev => ({
-      ...prev,
-      generated: true,
-      title: `Legal Note: ${alert.title.slice(0, 50)}`,
-      content_draft: `CONCEPTO LEGAL — DG&A\n\n${alert.title}\n\nSíntesis normativa:\n${alert.summary}\n\nRecomendación:\n${alert.recommendation}\n\nEste borrador fue generado con asistencia de IA y requiere revisión del abogado responsable antes de su envío.`,
-      content_email: `Estimado cliente,\n\nLe informamos sobre la siguiente novedad normativa relevante para su organización:\n\n${alert.title}\n\n${alert.recommendation}\n\nPara mayor información, no dude en contactarnos.\n\nAtentamente,\nEquipo DG&A`,
-      content_linkedin: `⚖️ Novedad normativa | ${alert.practice_area?.name ?? 'Derecho Empresarial'}\n\n${alert.title}\n\n${alert.summary?.slice(0, 200)}...\n\n#DGALegal #Compliance #DerechoColombia`,
-      content_summary: `• Alerta: ${alert.title}\n• Fuente: ${alert.source}\n• Acción recomendada: ${alert.recommendation}`,
-    }))
-    setGenerating(false)
+    try {
+      const { titleBase, ...body } = payload
+      const res = await fetch('/api/legal-notes/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { showToast(data.error || 'No se pudo generar el borrador'); return }
+      setNewNote(prev => ({
+        ...prev,
+        generated: true,
+        title: `Nota Legal: ${titleBase.slice(0, 60)}`,
+        content_draft: data.content_draft ?? '',
+        content_email: data.content_email ?? '',
+        content_linkedin: data.content_linkedin ?? '',
+        content_summary: data.content_summary ?? '',
+      }))
+    } catch {
+      showToast('Error de conexión al generar el borrador')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   async function saveNote() {
-    const noteData: Omit<LegalNote, 'id' | 'practice_area' | 'author'> = {
-      title: newNote.title, alert_id: newNote.alert_id,
-      practice_area_id: alerts.find(a => a.id === newNote.alert_id)?.practice_area_id ?? '',
+    // Área de práctica: de la alerta o de la seleccionada en modo manual.
+    const paId = newNote.source === 'manual'
+      ? newNote.man_area
+      : (alerts.find(a => a.id === newNote.alert_id)?.practice_area_id ?? '')
+    // alert_id y practice_area_id vacíos se OMITEN (son claves foráneas; '' rompe el insert).
+    const noteData = {
+      title: newNote.title,
       audience: newNote.audience, tone: newNote.tone,
       content_draft: newNote.content_draft, content_email: newNote.content_email,
       content_linkedin: newNote.content_linkedin, content_summary: newNote.content_summary,
-      status: 'en_revisión', author_id: 'u2',
+      status: 'en_revisión' as NoteStatus,
+      author_id: '', // el servidor lo sobreescribe con el usuario en sesión
       created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-    }
+      ...(newNote.alert_id ? { alert_id: newNote.alert_id } : {}),
+      ...(paId ? { practice_area_id: paId } : {}),
+    } as Omit<LegalNote, 'id' | 'practice_area' | 'author'>
     const created = await db.createLegalNote(noteData)
-    if (created) setNotes(prev => [created, ...prev])
+    if (!created) { showToast('No se pudo guardar la Nota Legal'); return }
+    setNotes(prev => [created, ...prev])
     setCreating(false)
-    setNewNote({ alert_id: '', audience: '', tone: '', title: '', generated: false, content_draft: '', content_email: '', content_linkedin: '', content_summary: '' })
-    showToast('Legal Note enviada a revisión de socio')
+    setNewNote(EMPTY_NEW)
+    showToast('Nota Legal enviada a revisión de socio')
   }
 
   function openEdit(note: LegalNote) {
@@ -244,7 +297,10 @@ export default function LegalNotesPage() {
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    <button type="button" title="Exportar" onClick={() => exportNote(selected)} className="p-1 rounded hover:bg-muted text-muted-foreground">
+                    <button type="button" title="Descargar Nota Legal (PDF con marca DG&A)" onClick={() => printNotaLegal(selected)} className="p-1 rounded hover:bg-muted text-brand-navy">
+                      <BookOpen className="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button" title="Exportar texto (.txt)" onClick={() => exportNote(selected)} className="p-1 rounded hover:bg-muted text-muted-foreground">
                       <Download className="w-3.5 h-3.5" />
                     </button>
                     <button type="button" title="Eliminar" onClick={() => setConfirmDelete(selected)} className="p-1 rounded hover:bg-red-50 text-muted-foreground hover:text-red-600">
@@ -358,7 +414,7 @@ export default function LegalNotesPage() {
       </Dialog>
 
       {/* Create Dialog */}
-      <Dialog open={creating} onOpenChange={v => { if (!v) { setCreating(false); setNewNote({ alert_id: '', audience: '', tone: '', title: '', generated: false, content_draft: '', content_email: '', content_linkedin: '', content_summary: '' }) } }}>
+      <Dialog open={creating} onOpenChange={v => { if (!v) { setCreating(false); setNewNote(EMPTY_NEW) } }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nueva Legal Note</DialogTitle>
@@ -366,15 +422,57 @@ export default function LegalNotesPage() {
           <div className="space-y-4 mt-2">
             {!newNote.generated ? (
               <>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Alerta origen</Label>
-                  <Select value={newNote.alert_id} onValueChange={v => setNewNote(p => ({ ...p, alert_id: v }))}>
-                    <SelectTrigger className="text-sm"><SelectValue placeholder="Seleccionar alerta" /></SelectTrigger>
-                    <SelectContent>
-                      {alerts.map(a => <SelectItem key={a.id} value={a.id} className="text-xs">{a.title.slice(0, 60)}...</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                {/* Modo: desde alerta registrada o texto propio */}
+                <div className="flex gap-2">
+                  {([['alert', 'Desde alerta registrada'], ['manual', 'Escribir o pegar texto']] as const).map(([val, label]) => (
+                    <button key={val} type="button" onClick={() => setNewNote(p => ({ ...p, source: val }))}
+                      className={`flex-1 text-xs font-medium px-3 py-2 rounded-lg border transition ${newNote.source === val ? 'bg-brand-navy text-white border-brand-navy' : 'bg-background text-muted-foreground border-border hover:border-foreground'}`}>
+                      {label}
+                    </button>
+                  ))}
                 </div>
+
+                {newNote.source === 'alert' ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Alerta origen</Label>
+                    <Select value={newNote.alert_id} onValueChange={v => setNewNote(p => ({ ...p, alert_id: v }))}>
+                      <SelectTrigger className="text-sm"><SelectValue placeholder={alerts.length ? 'Seleccionar alerta' : 'No hay alertas registradas'} /></SelectTrigger>
+                      <SelectContent>
+                        {alerts.map(a => <SelectItem key={a.id} value={a.id} className="text-xs">{a.title.slice(0, 60)}...</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    {alerts.length === 0 && (
+                      <p className="text-[11px] text-muted-foreground">No hay alertas cargadas. Usa <strong>«Escribir o pegar texto»</strong> para partir de tu propio contenido.</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Título del tema / norma *</Label>
+                      <Input value={newNote.man_title} onChange={e => setNewNote(p => ({ ...p, man_title: e.target.value }))} className="text-sm" placeholder="Ej. Resolución 000610 de 2026 — Salas Amigas de la Familia Lactante" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Texto / contenido *</Label>
+                      <Textarea value={newNote.man_text} onChange={e => setNewNote(p => ({ ...p, man_text: e.target.value }))} className="text-sm min-h-[150px]" placeholder="Pega aquí el texto de la resolución o la novedad normativa…" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Recomendación (opcional)</Label>
+                        <Input value={newNote.man_reco} onChange={e => setNewNote(p => ({ ...p, man_reco: e.target.value }))} className="text-sm" placeholder="Acción sugerida al cliente" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Área de práctica (opcional)</Label>
+                        <Select value={newNote.man_area} onValueChange={v => setNewNote(p => ({ ...p, man_area: v }))}>
+                          <SelectTrigger className="text-sm"><SelectValue placeholder="Seleccionar área" /></SelectTrigger>
+                          <SelectContent>
+                            {practiceAreas.map(pa => <SelectItem key={pa.id} value={pa.id} className="text-xs">{pa.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Audiencia</Label>
@@ -402,7 +500,7 @@ export default function LegalNotesPage() {
                 <Button
                   type="button"
                   onClick={generateDraft}
-                  disabled={!newNote.alert_id || !newNote.audience || !newNote.tone || generating}
+                  disabled={generating || !buildPayload()}
                   className="w-full"
                 >
                   {generating ? (
@@ -447,6 +545,16 @@ export default function LegalNotesPage() {
                   <Button type="button" size="sm" onClick={saveNote} disabled={!newNote.title} className="flex-1">
                     <Send className="w-3.5 h-3.5 mr-1.5" />
                     Enviar a revisión de socio
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => printNotaLegal({
+                    id: 'preview', title: newNote.title, audience: newNote.audience, tone: newNote.tone,
+                    content_draft: newNote.content_draft, content_email: newNote.content_email,
+                    content_linkedin: newNote.content_linkedin, content_summary: newNote.content_summary,
+                    practice_area_id: '', status: 'borrador_ia', author_id: '',
+                    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+                  })}>
+                    <Download className="w-3.5 h-3.5 mr-1.5" />
+                    PDF
                   </Button>
                   <Button type="button" size="sm" variant="ghost" onClick={() => setNewNote(p => ({ ...p, generated: false }))}>Volver</Button>
                 </div>

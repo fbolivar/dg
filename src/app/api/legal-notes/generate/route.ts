@@ -54,7 +54,13 @@ TONO: ${tone}
 Genera el siguiente contenido estructurado:
 
 ## BORRADOR PRINCIPAL
-[Boletín completo de 3-4 párrafos, con encabezado, cuerpo y cierre con llamado a acción]
+[Redacta una NOTA LEGAL profesional en español jurídico colombiano, lista para enviar al cliente. Sigue esta estructura:
+- Un párrafo introductorio que identifique la norma o novedad y su objeto.
+- Varias secciones temáticas. Encabeza CADA sección con "### TÍTULO DE LA SECCIÓN" en mayúsculas (por ejemplo: ### ÁMBITO DE APLICACIÓN, ### OBLIGACIONES, ### PLAZOS Y VIGENCIA, ### CONSECUENCIAS DEL INCUMPLIMIENTO).
+- Dentro de cada sección usa párrafos claros; cuando enumeres, usa viñetas con "• " al inicio de cada línea.
+- Cierra con una sección "### RECOMENDACIÓN" orientada a la acción para el cliente.
+- Resalta con **texto en negrilla** las fechas, plazos, umbrales y cifras clave.
+No incluyas encabezado de membrete ni datos de contacto (la plataforma los agrega al exportar).]
 
 ## VERSIÓN EMAIL
 [Asunto del correo + cuerpo del correo en máximo 2 párrafos]
@@ -82,20 +88,49 @@ Usa lenguaje formal, preciso y colombiano. Evita tecnicismos innecesarios cuando
         // thinking off: respuesta directa, sin la latencia del adaptive thinking
         // (que en Sonnet 5 viene activo por defecto si se omite).
         thinking: { type: 'disabled' },
+        // Streaming: la Nota Legal es una salida larga; sin stream la respuesta
+        // no envía cabeceras hasta terminar y la conexión se corta ("fetch failed").
+        stream: true,
         messages: [{ role: 'user', content: prompt }],
       }),
-      signal: AbortSignal.timeout(60_000), // evita que un upstream colgado bloquee la función
+      signal: AbortSignal.timeout(90_000),
     })
-  } catch {
+  } catch (e) {
+    console.error('[legal-notes/generate] fetch falló:', (e as Error)?.name, (e as Error)?.message)
     return NextResponse.json({ error: 'La generación tardó demasiado. Intente de nuevo.' }, { status: 504 })
   }
 
-  if (!response.ok) {
+  if (!response.ok || !response.body) {
     return NextResponse.json({ error: 'Error generando contenido' }, { status: 500 })
   }
 
-  const data = await response.json()
-  const raw = data?.content?.[0]?.text ?? ''
+  // Lee el stream SSE de Anthropic y acumula el texto generado.
+  let raw = ''
+  try {
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        const l = line.trim()
+        if (!l.startsWith('data:')) continue
+        const payload = l.slice(5).trim()
+        if (!payload || payload === '[DONE]') continue
+        try {
+          const ev = JSON.parse(payload)
+          if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') raw += ev.delta.text
+        } catch { /* línea no-JSON: ignorar */ }
+      }
+    }
+  } catch (e) {
+    console.error('[legal-notes/generate] stream falló:', (e as Error)?.name, (e as Error)?.message)
+    return NextResponse.json({ error: 'La generación se interrumpió. Intente de nuevo.' }, { status: 504 })
+  }
 
   const extract = (label: string) => {
     const regex = new RegExp(`## ${label}\\n([\\s\\S]*?)(?=\\n## |$)`, 'i')

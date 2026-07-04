@@ -63,7 +63,9 @@ export async function getLegalNotes(): Promise<LegalNote[]> {
   return raw.getLegalNotes()
 }
 export async function createLegalNote(note: Omit<LegalNote, 'id' | 'practice_area' | 'author'>): Promise<LegalNote | null> {
-  await requireStaff(); return raw.createLegalNote(note)
+  const s = await requireStaff()
+  // El autor es siempre el usuario en sesión (no un valor enviado por el cliente).
+  return raw.createLegalNote({ ...note, author_id: s.id })
 }
 export async function updateLegalNote(id: string, updates: Partial<LegalNote>): Promise<void> {
   const s = await requireStaff()

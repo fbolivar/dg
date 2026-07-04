@@ -52,22 +52,48 @@ ${bloque}`
         // thinking off: respuesta directa, sin la latencia del adaptive thinking
         // (que en Sonnet 5 viene activo por defecto si se omite).
         thinking: { type: 'disabled' },
+        // Streaming: mantiene la conexión viva en respuestas largas (evita "fetch failed").
+        stream: true,
         system,
         messages,
       }),
-      signal: AbortSignal.timeout(60_000), // evita que un upstream colgado bloquee la función
+      signal: AbortSignal.timeout(90_000),
     })
   } catch {
     return NextResponse.json({ error: 'La consulta tardó demasiado. Intente de nuevo.' }, { status: 504 })
   }
 
-  if (!response.ok) {
-    await response.text().catch(() => '') // consume sin reenviar detalles del upstream
+  if (!response.ok || !response.body) {
+    await response.text?.().catch(() => '') // consume sin reenviar detalles del upstream
     return NextResponse.json({ error: 'No se pudo procesar la consulta. Intente de nuevo.' }, { status: 502 })
   }
 
-  const data = await response.json()
-  const content = data?.content?.[0]?.text ?? ''
+  // Lee el stream SSE de Anthropic y acumula el texto de la respuesta.
+  let content = ''
+  try {
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        const l = line.trim()
+        if (!l.startsWith('data:')) continue
+        const payload = l.slice(5).trim()
+        if (!payload || payload === '[DONE]') continue
+        try {
+          const ev = JSON.parse(payload)
+          if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') content += ev.delta.text
+        } catch { /* línea no-JSON: ignorar */ }
+      }
+    }
+  } catch {
+    return NextResponse.json({ error: 'La consulta se interrumpió. Intente de nuevo.' }, { status: 504 })
+  }
 
   const confidenceMatch = content.match(/\[Confianza:\s*(alto|medio|bajo)\]/i)
   const requiresReviewMatch = content.match(/\[Requiere criterio de socio:\s*(sí|no)\]/i)
