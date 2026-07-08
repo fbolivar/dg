@@ -43,14 +43,17 @@ export const updateUserSchema = z.object({
 })
 
 // ─── Legal Notes (generación IA) ───────────────────────────────────────────────
-const MAX_FIELD = 4000
+// El "texto/contenido" puede ser una resolución de varias páginas: se permite
+// un límite amplio. Los demás campos son cortos.
+const MAX_TEXT = 24000
+const MAX_SHORT = 2000
 export const legalNoteSchema = z.object({
-  alert_title: z.string().trim().min(1).max(MAX_FIELD),
-  alert_summary: z.string().max(MAX_FIELD).optional().default(''),
-  alert_recommendation: z.string().max(MAX_FIELD).optional().default(''),
-  audience: z.string().trim().min(1).max(MAX_FIELD),
-  tone: z.string().trim().min(1).max(MAX_FIELD),
-  practice_area: z.string().max(MAX_FIELD).optional().default(''),
+  alert_title: z.string().trim().min(1, 'Indica el título del tema o norma').max(MAX_SHORT, 'El título es demasiado largo'),
+  alert_summary: z.string().max(MAX_TEXT, `El texto no puede superar ${MAX_TEXT.toLocaleString('es-CO')} caracteres`).optional().default(''),
+  alert_recommendation: z.string().max(MAX_TEXT, `La recomendación no puede superar ${MAX_TEXT.toLocaleString('es-CO')} caracteres`).optional().default(''),
+  audience: z.string().trim().min(1, 'Selecciona la audiencia').max(100),
+  tone: z.string().trim().min(1, 'Selecciona el tono').max(100),
+  practice_area: z.string().max(200).optional().default(''),
 })
 
 // ─── Copiloto (chat IA) ────────────────────────────────────────────────────────

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
   const parsed = legalNoteSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
+    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }, { status: 400 })
   }
   const alert_title = sanitize(parsed.data.alert_title)
   const alert_summary = sanitize(parsed.data.alert_summary)
