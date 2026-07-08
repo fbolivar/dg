@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/shared/lib/auth'
 import { copilotSchema } from '@/shared/lib/validation'
 
+// La respuesta de IA puede tardar; ampliamos el límite de la función serverless
+// para que Vercel no la corte (evita "Error de conexión").
+export const maxDuration = 60
+
 export async function POST(req: NextRequest) {
   if (!(await getSession())) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 })

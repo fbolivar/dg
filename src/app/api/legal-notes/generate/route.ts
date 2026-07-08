@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/shared/lib/auth'
 import { legalNoteSchema } from '@/shared/lib/validation'
 
+// La generación con IA puede tardar 20–30 s. Sin esto, Vercel corta la función
+// (~15 s por defecto) y el cliente ve "Error de conexión al generar el borrador".
+export const maxDuration = 60
+
 // Saneo anti prompt-injection: quita encabezados markdown (que podrían colisionar
 // con la estructura "## SECCIÓN" que parseamos en la salida) y elimina los
 // marcadores de delimitación para que el usuario no pueda cerrar el bloque de
