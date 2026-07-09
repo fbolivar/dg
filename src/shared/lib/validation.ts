@@ -54,6 +54,9 @@ export const legalNoteSchema = z.object({
   audience: z.string().trim().min(1, 'Selecciona la audiencia').max(100),
   tone: z.string().trim().min(1, 'Selecciona el tono').max(100),
   practice_area: z.string().max(200).optional().default(''),
+  // PDF de la resolución (opcional): base64 sin el prefijo data:. Límite ~9 MB en base64.
+  pdf_base64: z.string().max(12_000_000).optional(),
+  pdf_name: z.string().max(300).optional(),
 })
 
 // ─── Copiloto (chat IA) ────────────────────────────────────────────────────────

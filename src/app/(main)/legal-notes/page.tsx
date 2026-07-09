@@ -15,12 +15,13 @@ import { AiDisclaimer } from '@/components/layout/ai-disclaimer'
 import { useData } from '@/shared/context/data-context'
 import * as db from '@/shared/services/db'
 import type { LegalNote, NoteStatus } from '@/shared/types'
-import { printNotaLegal } from './_lib/nota-legal-pdf'
+import { downloadNotaLegalPdf } from './_lib/nota-legal-pdf'
 
 type NoteSource = 'alert' | 'manual'
 const EMPTY_NEW = {
   source: 'alert' as NoteSource,
   alert_id: '', man_title: '', man_text: '', man_reco: '', man_area: '',
+  man_pdf_base64: '', man_pdf_name: '',
   audience: '', tone: '', title: '', generated: false,
   content_draft: '', content_email: '', content_linkedin: '', content_summary: '',
 }
@@ -58,11 +59,31 @@ export default function LegalNotesPage() {
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000) }
 
+  // Lee un PDF y guarda su contenido en base64 para enviarlo a la IA.
+  async function onPdfSelected(file?: File) {
+    if (!file) return
+    if (file.type !== 'application/pdf') { showToast('Debes subir un archivo PDF'); return }
+    if (file.size > 4_500_000) { showToast('El PDF supera 4.5 MB. Usa uno más liviano o pega el texto.'); return }
+    try {
+      const b64 = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader()
+        r.onload = () => resolve(String(r.result).split(',')[1] ?? '')
+        r.onerror = () => reject(new Error('read'))
+        r.readAsDataURL(file)
+      })
+      setNewNote(p => ({ ...p, man_pdf_base64: b64, man_pdf_name: file.name }))
+    } catch {
+      showToast('No se pudo leer el PDF')
+    }
+  }
+
   // Construye el payload para la IA según el modo (alerta registrada o texto propio).
-  function buildPayload(): { alert_title: string; alert_summary: string; alert_recommendation: string; audience: string; tone: string; practice_area: string; titleBase: string } | null {
+  function buildPayload(): { alert_title: string; alert_summary: string; alert_recommendation: string; audience: string; tone: string; practice_area: string; titleBase: string; pdf_base64?: string; pdf_name?: string } | null {
     if (!newNote.audience || !newNote.tone) return null
     if (newNote.source === 'manual') {
-      if (!newNote.man_title.trim() || !newNote.man_text.trim()) return null
+      const hasText = !!newNote.man_text.trim()
+      const hasPdf = !!newNote.man_pdf_base64
+      if (!newNote.man_title.trim() || (!hasText && !hasPdf)) return null
       return {
         alert_title: newNote.man_title.trim(),
         alert_summary: newNote.man_text.trim(),
@@ -70,6 +91,8 @@ export default function LegalNotesPage() {
         audience: newNote.audience, tone: newNote.tone,
         practice_area: practiceAreas.find(p => p.id === newNote.man_area)?.name ?? '',
         titleBase: newNote.man_title.trim(),
+        pdf_base64: newNote.man_pdf_base64 || undefined,
+        pdf_name: newNote.man_pdf_name || undefined,
       }
     }
     const alert = alerts.find(a => a.id === newNote.alert_id)
@@ -297,7 +320,7 @@ export default function LegalNotesPage() {
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    <button type="button" title="Descargar Nota Legal (PDF con marca DG&A)" onClick={() => printNotaLegal(selected)} className="p-1 rounded hover:bg-muted text-brand-navy">
+                    <button type="button" title="Descargar Nota Legal (PDF con marca DG&A)" onClick={() => downloadNotaLegalPdf(selected)} className="p-1 rounded hover:bg-muted text-brand-navy">
                       <BookOpen className="w-3.5 h-3.5" />
                     </button>
                     <button type="button" title="Exportar texto (.txt)" onClick={() => exportNote(selected)} className="p-1 rounded hover:bg-muted text-muted-foreground">
@@ -452,8 +475,21 @@ export default function LegalNotesPage() {
                       <Input value={newNote.man_title} onChange={e => setNewNote(p => ({ ...p, man_title: e.target.value }))} className="text-sm" placeholder="Ej. Resolución 000610 de 2026 — Salas Amigas de la Familia Lactante" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs">Texto / contenido *</Label>
-                      <Textarea value={newNote.man_text} onChange={e => setNewNote(p => ({ ...p, man_text: e.target.value }))} className="text-sm min-h-[150px]" placeholder="Pega aquí el texto de la resolución o la novedad normativa…" />
+                      <Label className="text-xs">Texto / contenido {newNote.man_pdf_name ? <span className="text-muted-foreground font-normal">(opcional si subes el PDF)</span> : '*'}</Label>
+                      <Textarea value={newNote.man_text} onChange={e => setNewNote(p => ({ ...p, man_text: e.target.value }))} className="text-sm min-h-[130px]" placeholder="Pega aquí el texto de la resolución o la novedad normativa…" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">O sube el PDF de la resolución</Label>
+                      {newNote.man_pdf_name ? (
+                        <div className="flex items-center justify-between gap-2 text-xs bg-muted/50 border border-border rounded-md px-3 py-2">
+                          <span className="truncate">📎 {newNote.man_pdf_name}</span>
+                          <button type="button" onClick={() => setNewNote(p => ({ ...p, man_pdf_base64: '', man_pdf_name: '' }))} className="text-muted-foreground hover:text-red-600 flex-shrink-0">Quitar</button>
+                        </div>
+                      ) : (
+                        <input type="file" accept="application/pdf" onChange={e => onPdfSelected(e.target.files?.[0])}
+                          className="block w-full text-xs text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-brand-navy file:text-white file:px-3 file:py-1.5 file:text-xs file:cursor-pointer hover:file:opacity-90" />
+                      )}
+                      <p className="text-[11px] text-muted-foreground">Si subes el PDF, la IA lo lee completo y redacta la nota. No necesitas pegar el texto.</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
@@ -546,7 +582,7 @@ export default function LegalNotesPage() {
                     <Send className="w-3.5 h-3.5 mr-1.5" />
                     Enviar a revisión de socio
                   </Button>
-                  <Button type="button" size="sm" variant="outline" onClick={() => printNotaLegal({
+                  <Button type="button" size="sm" variant="outline" onClick={() => downloadNotaLegalPdf({
                     id: 'preview', title: newNote.title, audience: newNote.audience, tone: newNote.tone,
                     content_draft: newNote.content_draft, content_email: newNote.content_email,
                     content_linkedin: newNote.content_linkedin, content_summary: newNote.content_summary,
